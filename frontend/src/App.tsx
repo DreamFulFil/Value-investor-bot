@@ -1,68 +1,170 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
-import { BacktestLab } from '@/components/backtest/BacktestLab';
-import { LearningTab } from '@/components/learning/LearningTab';
-import { GoalsTab } from '@/components/goals/GoalsTab';
-import { SettingsPage } from '@/components/settings/SettingsPage';
-import { GoLiveWizard } from '@/components/wizard/GoLiveWizard';
-import Confetti from 'react-confetti';
-import { useWindowSize } from '@/hooks/useWindowSize';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Header,
+  StatCard,
+  RebalanceButton,
+  GoalRing,
+  PortfolioChart,
+  AllocationPie,
+  HoldingsTable,
+  InsightsPanel,
+} from './components';
+import {
+  fetchPortfolioSummary,
+  fetchPositions,
+  fetchDividendSummary,
+  fetchPortfolioHistory,
+  fetchInsights,
+  runMonthlyRebalance,
+} from './lib/api';
+import './i18n';
 
-function App() {
-  const [showWizard, setShowWizard] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const { width, height } = useWindowSize();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
-  useEffect(() => {
-    // Check if wizard has been completed
-    const wizardCompleted = localStorage.getItem('wizard_completed');
-    if (!wizardCompleted) {
-      setShowWizard(true);
-    }
+function Dashboard() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [hasRebalanced, setHasRebalanced] = useState(() => {
+    return localStorage.getItem('hasRebalanced') === 'true';
+  });
+  const [showSuccess, setShowSuccess] = useState(false);
 
-    // Listen for rebalance success events
-    const handleRebalanceSuccess = () => {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 5000);
-    };
+  const { data: summary } = useQuery({
+    queryKey: ['portfolioSummary'],
+    queryFn: fetchPortfolioSummary,
+  });
 
-    window.addEventListener('rebalance-success', handleRebalanceSuccess);
-    return () => window.removeEventListener('rebalance-success', handleRebalanceSuccess);
-  }, []);
+  const { data: positions = [] } = useQuery({
+    queryKey: ['positions'],
+    queryFn: fetchPositions,
+  });
 
-  const handleWizardComplete = () => {
-    setShowWizard(false);
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 5000);
-  };
+  const { data: dividends } = useQuery({
+    queryKey: ['dividends'],
+    queryFn: fetchDividendSummary,
+  });
+
+  const { data: history = [] } = useQuery({
+    queryKey: ['portfolioHistory'],
+    queryFn: fetchPortfolioHistory,
+  });
+
+  const { data: insights = [] } = useQuery({
+    queryKey: ['insights'],
+    queryFn: fetchInsights,
+  });
+
+  const rebalanceMutation = useMutation({
+    mutationFn: runMonthlyRebalance,
+    onSuccess: () => {
+      setHasRebalanced(true);
+      localStorage.setItem('hasRebalanced', 'true');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      qc.invalidateQueries();
+    },
+  });
+
+  const isEmpty = !hasRebalanced || (summary?.totalValue === 0 && positions.length === 0);
+  const weeklyDividend = dividends ? dividends.projectedAnnualDividends / 52 : 0;
 
   return (
-    <>
-      {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={500}
-        />
-      )}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Header />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {showSuccess && (
+          <div className="fixed top-20 right-4 z-50 animate-bounce">
+            <div className="bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {t('success')}
+            </div>
+          </div>
+        )}
 
-      <Router>
-        <Routes>
-          <Route path="/" element={<AppLayout />}>
-            <Route index element={<DashboardOverview />} />
-            <Route path="backtest" element={<BacktestLab />} />
-            <Route path="learning" element={<LearningTab />} />
-            <Route path="goals" element={<GoalsTab />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </Router>
+        <div className="mb-8">
+          <RebalanceButton
+            hasRebalanced={hasRebalanced}
+            isLoading={rebalanceMutation.isPending}
+            onClick={() => rebalanceMutation.mutate()}
+          />
+          {rebalanceMutation.isError && (
+            <p className="text-center text-red-500 mt-2 text-sm">
+              {t('error')}: {(rebalanceMutation.error as Error).message}
+            </p>
+          )}
+        </div>
 
-      <GoLiveWizard open={showWizard} onComplete={handleWizardComplete} />
-    </>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            title={t('portfolioValue')}
+            value={summary?.totalValue ?? 0}
+            trend={summary?.returnPercentage}
+            isEmpty={isEmpty}
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          />
+          <StatCard
+            title={t('totalReturn')}
+            value={summary?.totalReturn ?? 0}
+            trend={summary?.returnPercentage}
+            isEmpty={isEmpty}
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
+          />
+          <StatCard
+            title={t('dividendIncome')}
+            value={dividends?.ytdDividends ?? 0}
+            subtitle={`${t('lastRebalance')}: ${hasRebalanced ? new Date().toLocaleDateString() : t('never')}`}
+            isEmpty={isEmpty}
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>}
+          />
+          <StatCard
+            title={t('cashBalance')}
+            value={summary?.cashBalance ?? 0}
+            isEmpty={isEmpty}
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <PortfolioChart data={history} isEmpty={isEmpty} />
+          <AllocationPie positions={positions} isEmpty={isEmpty} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <HoldingsTable positions={positions} isEmpty={isEmpty} />
+          </div>
+          <div className="space-y-6">
+            <GoalRing current={weeklyDividend} target={1600} isEmpty={isEmpty} />
+            <InsightsPanel insights={insights} isEmpty={isEmpty} />
+          </div>
+        </div>
+      </main>
+
+      <footer className="mt-12 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p>Value Investor Bot - Taiwan Edition © {new Date().getFullYear()}</p>
+      </footer>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Dashboard />
+    </QueryClientProvider>
   );
 }
 

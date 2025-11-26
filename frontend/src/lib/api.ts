@@ -1,88 +1,94 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: '/api',
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor for adding auth token if needed
-api.interceptors.request.use(
-  (config) => {
-    // Add auth token here if implementing authentication
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+export interface PortfolioSummary {
+  totalValue: number;
+  totalCost: number;
+  totalReturn: number;
+  returnPercentage: number;
+  cashBalance: number;
+  positionCount: number;
+}
+
+export interface Position {
+  symbol: string;
+  name: string;
+  shares: number;
+  currentPrice: number;
+  marketValue: number;
+  costBasis: number;
+  unrealizedGain: number;
+  weight: number;
+}
+
+export interface DividendSummary {
+  totalDividends: number;
+  ytdDividends: number;
+  lastMonthDividends: number;
+  projectedAnnualDividends: number;
+}
+
+export interface RebalanceResult {
+  success: boolean;
+  message: string;
+  tradesExecuted: number;
+  newPositions: number;
+  timestamp: string;
+}
+
+export interface PortfolioHistory {
+  date: string;
+  value: number;
+}
+
+export interface Insight {
+  id: number;
+  content: string;
+  createdAt: string;
+}
+
+export const fetchPortfolioSummary = async (): Promise<PortfolioSummary> => {
+  const { data } = await api.get('/portfolio/summary');
+  return data;
+};
+
+export const fetchPositions = async (): Promise<Position[]> => {
+  const { data } = await api.get('/portfolio/positions');
+  return data;
+};
+
+export const fetchDividendSummary = async (): Promise<DividendSummary> => {
+  const { data } = await api.get('/dividends/summary');
+  return data;
+};
+
+export const fetchPortfolioHistory = async (): Promise<PortfolioHistory[]> => {
+  const { data } = await api.get('/portfolio/history');
+  return data;
+};
+
+export const fetchInsights = async (): Promise<Insight[]> => {
+  const { data } = await api.get('/insights');
+  return data;
+};
+
+export const runMonthlyRebalance = async (): Promise<RebalanceResult> => {
+  const { data } = await api.post('/rebalance/monthly');
+  return data;
+};
+
+export const checkHealth = async (): Promise<boolean> => {
+  try {
+    await api.get('/health');
+    return true;
+  } catch {
+    return false;
   }
-);
-
-// Response interceptor for handling errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('API Error:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
-
-// Portfolio endpoints
-export const portfolioApi = {
-  getCurrent: () => api.get('/portfolio/current'),
-  getSnapshots: (startDate?: string, endDate?: string) =>
-    api.get('/portfolio/snapshots', { params: { startDate, endDate } }),
-  deposit: (amount: number) => api.post('/portfolio/deposit', { amount }),
-  getHistory: (months: number = 6) =>
-    api.get('/portfolio/history', { params: { months } }),
-};
-
-// Trading endpoints
-export const tradingApi = {
-  getTransactions: (limit: number = 20) =>
-    api.get('/trading/transactions', { params: { limit } }),
-  rebalance: () => api.post('/trading/rebalance'),
-  executeOrder: (order: { symbol: string; shares: number; type: 'BUY' | 'SELL' }) =>
-    api.post('/trading/execute', order),
-};
-
-// Insights endpoints
-export const insightsApi = {
-  getCurrent: () => api.get('/insights/current'),
-  getPortfolioReport: () => api.get('/insights/portfolio'),
-  getDailyTip: () => api.get('/insights/learning/daily'),
-  likeTip: (id: number) => api.post(`/insights/learning/${id}/like`),
-  getLearningHistory: (category?: string) =>
-    api.get('/insights/learning/history', { params: { category } }),
-};
-
-// Market data endpoints
-export const marketApi = {
-  getUniverse: () => api.get('/data/universe'),
-  getTopDividends: (limit: number = 10) =>
-    api.get('/market/top-dividends', { params: { limit } }),
-  getQuote: (symbol: string) => api.get(`/market/quote/${symbol}`),
-};
-
-// Backtest endpoints
-export const backtestApi = {
-  run: (params: {
-    startDate: string;
-    endDate: string;
-    monthlyInvestment: number;
-    symbols: string[];
-  }) => api.post('/backtest/run', params),
-  getResults: (backtestId: string) => api.get(`/backtest/results/${backtestId}`),
-};
-
-// Goals endpoints
-export const goalsApi = {
-  getProgress: () => api.get('/goals/progress'),
-  setWeeklyIncomeGoal: (amount: number) =>
-    api.post('/goals/weekly-income', { amount }),
-  getMilestones: () => api.get('/goals/milestones'),
 };
 
 export default api;

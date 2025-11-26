@@ -1,25 +1,88 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import enTranslations from './locales/en.json';
-import zhTWTranslations from './locales/zh-TW.json';
-
-// Get saved language or default to 'en'
-const savedLanguage = localStorage.getItem('language') || 'en';
 
 const resources = {
-  en: enTranslations,
-  'zh-TW': zhTWTranslations,
+  en: {
+    translation: {
+      appName: 'Value Investor Bot',
+      subtitle: 'Taiwan Edition',
+      runFirstRebalance: '🚀 Run First Monthly Rebalance',
+      runMonthlyRebalance: '📊 Run Monthly Rebalance Now',
+      rebalancing: 'Rebalancing...',
+      dashboard: 'Dashboard',
+      portfolioValue: 'Portfolio Value',
+      totalReturn: 'Total Return',
+      dividendIncome: 'Dividend Income',
+      cashBalance: 'Cash Balance',
+      portfolioPerformance: 'Portfolio Performance',
+      assetAllocation: 'Asset Allocation',
+      topHoldings: 'Top 5 Holdings',
+      weeklyDividendGoal: 'Weekly Dividend Goal',
+      symbol: 'Symbol',
+      name: 'Name',
+      shares: 'Shares',
+      value: 'Value',
+      weight: 'Weight',
+      noDataYet: 'No data yet',
+      clickBlueButton: 'Click the blue button above to start your investment journey! 🎯',
+      startJourney: 'Start Your Journey',
+      weeklyGoal: 'NT$1,600/week',
+      ofGoal: 'of goal',
+      latestInsights: 'Latest AI Insights',
+      noInsights: 'Run your first rebalance to get AI-powered insights',
+      settings: 'Settings',
+      language: 'Language',
+      darkMode: 'Dark Mode',
+      lastRebalance: 'Last Rebalance',
+      never: 'Never',
+      success: 'Success!',
+      error: 'Error',
+    },
+  },
+  zh: {
+    translation: {
+      appName: '價值投資機器人',
+      subtitle: '台灣版',
+      runFirstRebalance: '🚀 執行首次月度再平衡',
+      runMonthlyRebalance: '📊 立即執行月度再平衡',
+      rebalancing: '再平衡中...',
+      dashboard: '儀表板',
+      portfolioValue: '投資組合價值',
+      totalReturn: '總報酬',
+      dividendIncome: '股息收入',
+      cashBalance: '現金餘額',
+      portfolioPerformance: '投資組合表現',
+      assetAllocation: '資產配置',
+      topHoldings: '前五大持股',
+      weeklyDividendGoal: '每週股息目標',
+      symbol: '代號',
+      name: '名稱',
+      shares: '股數',
+      value: '市值',
+      weight: '權重',
+      noDataYet: '尚無資料',
+      clickBlueButton: '點擊上方藍色按鈕開始您的投資旅程！🎯',
+      startJourney: '開始您的旅程',
+      weeklyGoal: 'NT$1,600/週',
+      ofGoal: '目標達成',
+      latestInsights: '最新 AI 洞察',
+      noInsights: '執行首次再平衡以獲得 AI 投資建議',
+      settings: '設定',
+      language: '語言',
+      darkMode: '深色模式',
+      lastRebalance: '上次再平衡',
+      never: '從未',
+      success: '成功！',
+      error: '錯誤',
+    },
+  },
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: savedLanguage,
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false,
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: localStorage.getItem('language') || 'zh',
+  fallbackLng: 'en',
+  interpolation: { escapeValue: false },
+});
 
 export default i18n;
