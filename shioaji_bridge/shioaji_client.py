@@ -87,12 +87,15 @@ class ShioajiClient:
         Get contract object for given Taiwan stock symbol
 
         Args:
-            symbol: Stock symbol (e.g., '2330', '2454')
+            symbol: Stock symbol (e.g., '2330', '2454', '2330.TW')
 
         Returns:
             Contract object or None if not found
         """
         try:
+            # Strip .TW or .TWO suffix if present (backend uses Yahoo-style symbols)
+            stock_code = symbol.replace('.TW', '').replace('.TWO', '')
+
             # For Taiwan stocks, we need to search TSE, OTC, and OES exchanges
             # Shioaji uses different contract structures for different exchanges
 
@@ -103,8 +106,8 @@ class ShioajiClient:
 
                     # Search for the symbol in this exchange
                     for contract in exchange_contracts:
-                        if contract.code == symbol:
-                            logger.info(f"Found contract for {symbol} in {exchange}: {contract}")
+                        if contract.code == stock_code:
+                            logger.info(f"Found contract for {symbol} (code: {stock_code}) in {exchange}: {contract}")
                             return contract
 
                 except AttributeError:
@@ -114,7 +117,7 @@ class ShioajiClient:
                     logger.debug(f"Error searching {exchange}: {ex}")
                     continue
 
-            logger.error(f"Contract not found for symbol: {symbol} in any Taiwan exchange (TSE/OTC/OES)")
+            logger.error(f"Contract not found for symbol: {symbol} (code: {stock_code}) in any Taiwan exchange (TSE/OTC/OES)")
             return None
 
         except Exception as e:
