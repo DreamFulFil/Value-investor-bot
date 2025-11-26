@@ -97,21 +97,22 @@ class ShioajiClient:
             stock_code = symbol.replace('.TW', '').replace('.TWO', '')
 
             # For Taiwan stocks, we need to search TSE, OTC, and OES exchanges
-            # Shioaji uses different contract structures for different exchanges
+            # Shioaji contract objects support dict-style access with []
 
             # Try Taiwan exchanges in order: TSE (main), OTC, OES
             for exchange in ['TSE', 'OTC', 'OES']:
                 try:
                     exchange_contracts = getattr(self.api.Contracts.Stocks, exchange)
 
-                    # Search for the symbol in this exchange
-                    for contract in exchange_contracts:
-                        if contract.code == stock_code:
-                            logger.info(f"Found contract for {symbol} (code: {stock_code}) in {exchange}: {contract}")
-                            return contract
+                    # Use dict-style access (correct Shioaji pattern)
+                    contract = exchange_contracts[stock_code]
 
-                except AttributeError:
-                    logger.debug(f"Exchange {exchange} not available")
+                    if contract:
+                        logger.info(f"Found contract for {symbol} (code: {stock_code}) in {exchange}: {contract}")
+                        return contract
+
+                except (KeyError, AttributeError):
+                    logger.debug(f"Contract {stock_code} not found in {exchange}")
                     continue
                 except Exception as ex:
                     logger.debug(f"Error searching {exchange}: {ex}")

@@ -245,72 +245,58 @@ async def get_history(
         if hasattr(kbars, '__dict__'):
             logger.info(f"kbars __dict__: {kbars.__dict__}")
 
-        if not kbars:
-            return HistoryResponse(
-                success=True,
-                symbol=symbol,
-                prices=[],
-                count=0
-            )
-
-        # Convert kbars to price bars
+        # Convert kbars to price bars using correct Shioaji pattern
+        # Shioaji Kbars is a namedtuple-like object, unpack with {**kbars}
         prices = []
-
-        # Shioaji kbars returns columnar data format: list of (field_name, [values...])
-        # Convert to list and check structure
-        kbars_list = list(kbars) if hasattr(kbars, '__iter__') else []
-
-        if len(kbars_list) == 0:
-            return HistoryResponse(
-                success=True,
-                symbol=symbol,
-                prices=[],
-                count=0
-            )
-
-        # Parse columnar format: [(field_name, [values]), ...]
-        # Expected fields: ts, Open, High, Low, Close, Volume
-        kbars_dict = {}
-        for item in kbars_list:
-            if isinstance(item, tuple) and len(item) == 2:
-                field_name, values = item
-                kbars_dict[field_name] = values
-
-        # Check if we have required fields
-        if 'ts' not in kbars_dict or 'Close' not in kbars_dict:
-            logger.error(f"Missing required fields in kbars: {kbars_dict.keys()}")
-            return HistoryResponse(
-                success=True,
-                symbol=symbol,
-                prices=[],
-                count=0
-            )
-
-        # Get the number of bars
-        num_bars = len(kbars_dict.get('ts', []))
-
-        # Transpose columnar data to row-based price bars
-        for i in range(num_bars):
-            try:
-                # Convert nanosecond timestamp to datetime
-                timestamp_ns = kbars_dict['ts'][i]
-                timestamp_sec = timestamp_ns / 1_000_000_000
-                date_val = datetime.fromtimestamp(timestamp_sec)
-                date_str = date_val.strftime("%Y-%m-%d")
-
-                price_bar = PriceBar(
-                    date=date_str,
-                    open=float(kbars_dict.get('Open', [0] * num_bars)[i]),
-                    high=float(kbars_dict.get('High', [0] * num_bars)[i]),
-                    low=float(kbars_dict.get('Low', [0] * num_bars)[i]),
-                    close=float(kbars_dict.get('Close', [0] * num_bars)[i]),
-                    volume=int(kbars_dict.get('Volume', [0] * num_bars)[i]),
-                    adjusted_close=float(kbars_dict.get('Close', [0] * num_bars)[i])
+        
+        try:
+            # Unpack kbars to dict (correct Shioaji pattern)
+            kbars_dict = {**kbars}
+            
+            # Check if we have data
+            if not kbars_dict.get('ts') or len(kbars_dict['ts']) == 0:
+                logger.info(f"No kbars data for {symbol}")
+                return HistoryResponse(
+                    success=True,
+                    symbol=symbol,
+                    prices=[],
+                    count=0
                 )
-                prices.append(price_bar)
-            except Exception as bar_error:
-                logger.error(f"Error parsing bar at index {i}: {bar_error}")
-                continue
+            
+            num_bars = len(kbars_dict['ts'])
+            logger.info(f"Processing {num_bars} kbars for {symbol}")
+            
+            # Convert columnar data to row-based price bars
+            for i in range(num_bars):
+                try:
+                    # Convert nanosecond timestamp to datetime
+                    timestamp_ns = kbars_dict['ts'][i]
+                    timestamp_sec = timestamp_ns / 1_000_000_000
+                    date_val = datetime.fromtimestamp(timestamp_sec)
+                    date_str = date_val.strftime("%Y-%m-%d")
+
+                    price_bar = PriceBar(
+                        date=date_str,
+                        open=float(kbars_dict['Open'][i]),
+                        high=float(kbars_dict['High'][i]),
+                        low=float(kbars_dict['Low'][i]),
+                        close=float(kbars_dict['Close'][i]),
+                        volume=int(kbars_dict['Volume'][i]),
+                        adjusted_close=float(kbars_dict['Close'][i])
+                    )
+                    prices.append(price_bar)
+                except Exception as bar_error:
+                    logger.error(f"Error parsing bar at index {i}: {bar_error}")
+                    continue
+                    
+        except Exception as unpack_error:
+            logger.error(f"Error unpacking kbars: {unpack_error}")
+            return HistoryResponse(
+                success=True,
+                symbol=symbol,
+                prices=[],
+                count=0
+            )
 
         logger.info(f"Successfully fetched {len(prices)} price bars for {symbol}")
 
