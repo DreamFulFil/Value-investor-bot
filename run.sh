@@ -80,5 +80,5 @@ echo -e "========================================${NC}"
 
 cd backend
 JAR="target/value-investor-bot-0.0.1-SNAPSHOT.jar"
-[ ! -f "$JAR" ] && ./mvnw clean package -DskipTests -q
+[ ! -f "$JAR" ] && mvn clean package -DskipTests -q
 java -jar "$JAR"
