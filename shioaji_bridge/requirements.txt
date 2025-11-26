@@ -1,8 +1,11 @@
 # Shioaji Bridge Python Dependencies
 # Install with: pip install -r requirements.txt
 
-# Shioaji SDK for Sinopac broker integration
+# Shioaji SDK for Sinopac broker integration (Taiwan stocks)
 shioaji>=1.1.4
+
+# Yahoo Finance as fallback data source
+yfinance>=0.2.0
 
 # Environment variable management
 python-dotenv>=1.0.0
@@ -12,6 +15,6 @@ fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
 
-# Additional dependencies that may be required by Shioaji
+# Additional dependencies
 requests>=2.31.0
 pandas>=2.0.0

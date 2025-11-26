@@ -1,118 +1,132 @@
 #!/usr/bin/env python3
 """
-Fetch historical price data for a US stock symbol via Shioaji
+Fetch historical price data for a Taiwan stock symbol via Shioaji
+Falls back to Yahoo Finance when Shioaji data unavailable
 Usage: python fetch_history.py SYMBOL START_DATE END_DATE
 Returns: JSON with historical price data
 """
 import sys
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import Config
 from shioaji_client import ShioajiClient
+import yfinance as yf
 
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 def fetch_history(symbol: str, start_date: str, end_date: str) -> dict:
     """
-    Fetch historical price data for a symbol
+    Fetch historical price data for a Taiwan stock symbol
 
     Args:
-        symbol: Stock symbol (e.g., 'AAPL')
+        symbol: Taiwan stock symbol (e.g., '2330', '2330.TW')
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
 
     Returns:
         dict: Historical price data
     """
+    # Try Shioaji first
     try:
         config = Config()
         client = ShioajiClient(config)
 
-        # Login
         success, message = client.login()
-        if not success:
-            return {
-                "success": False,
-                "error": f"Login failed: {message}",
-                "prices": []
-            }
-
-        # Get contract
-        contract = client._get_contract(symbol)
-        if not contract:
-            return {
-                "success": False,
-                "error": f"Contract not found for {symbol}",
-                "prices": []
-            }
-
-        # Fetch historical data (kbars)
-        try:
-            # Convert dates to datetime objects
-            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-
-            # Fetch kbars (daily candles)
-            kbars = client.api.kbars(
-                contract=contract,
-                start=start_dt.strftime("%Y-%m-%d"),
-                end=end_dt.strftime("%Y-%m-%d")
-            )
-
-            if not kbars or len(kbars) == 0:
-                return {
-                    "success": True,
-                    "symbol": symbol,
-                    "prices": [],
-                    "message": "No historical data available"
-                }
-
-            # Convert kbars to price history format
-            prices = []
-            for bar in kbars:
-                try:
-                    price_entry = {
-                        "date": bar['ts'].strftime("%Y-%m-%d") if 'ts' in bar else bar['Date'].strftime("%Y-%m-%d"),
-                        "open": float(bar.get('Open', bar.get('open', 0))),
-                        "high": float(bar.get('High', bar.get('high', 0))),
-                        "low": float(bar.get('Low', bar.get('low', 0))),
-                        "close": float(bar.get('Close', bar.get('close', 0))),
-                        "volume": int(bar.get('Volume', bar.get('volume', 0))),
-                        "adjusted_close": float(bar.get('Close', bar.get('close', 0)))  # Shioaji doesn't provide adjusted close separately
-                    }
-                    prices.append(price_entry)
-                except Exception as bar_error:
-                    logger.error(f"Error parsing bar: {bar_error}")
-                    continue
-
-            return {
-                "success": True,
-                "symbol": symbol,
-                "prices": prices,
-                "count": len(prices)
-            }
-
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to fetch historical data: {str(e)}",
-                "prices": []
-            }
-        finally:
-            # Logout
+        if success:
+            # Check API quota
             try:
-                client.api.logout()
+                usage = client.api.usage()
+                if hasattr(usage, 'remaining_bytes') and usage.remaining_bytes <= 0:
+                    logger.info("Shioaji quota exceeded, using Yahoo Finance")
+                    client.logout()
+                    return fetch_history_yahoo(symbol, start_date, end_date)
             except:
                 pass
 
+            contract = client._get_contract(symbol)
+            if contract:
+                kbars = client.api.kbars(
+                    contract=contract,
+                    start=start_date,
+                    end=end_date
+                )
+                
+                # Unpack kbars correctly
+                kbars_dict = {**kbars}
+                if kbars_dict.get('ts') and len(kbars_dict['ts']) > 0:
+                    prices = []
+                    for i in range(len(kbars_dict['ts'])):
+                        timestamp_ns = kbars_dict['ts'][i]
+                        timestamp_sec = timestamp_ns / 1_000_000_000
+                        date_val = datetime.fromtimestamp(timestamp_sec)
+                        
+                        prices.append({
+                            "date": date_val.strftime("%Y-%m-%d"),
+                            "open": float(kbars_dict['Open'][i]),
+                            "high": float(kbars_dict['High'][i]),
+                            "low": float(kbars_dict['Low'][i]),
+                            "close": float(kbars_dict['Close'][i]),
+                            "volume": int(kbars_dict['Volume'][i]),
+                            "adjusted_close": float(kbars_dict['Close'][i])
+                        })
+                    
+                    client.logout()
+                    return {
+                        "success": True,
+                        "symbol": symbol,
+                        "prices": prices,
+                        "count": len(prices)
+                    }
+            
+            client.logout()
     except Exception as e:
+        logger.error(f"Shioaji error: {e}")
+
+    # Fallback to Yahoo Finance
+    return fetch_history_yahoo(symbol, start_date, end_date)
+
+
+def fetch_history_yahoo(symbol: str, start_date: str, end_date: str) -> dict:
+    """Fetch historical data from Yahoo Finance"""
+    try:
+        # Convert to Yahoo Finance format
+        yahoo_symbol = symbol if '.TW' in symbol or '.TWO' in symbol else f"{symbol}.TW"
+        
+        ticker = yf.Ticker(yahoo_symbol)
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        df = ticker.history(start=start_date, end=end_dt.strftime("%Y-%m-%d"))
+        
+        # Try OTC if TSE fails
+        if df.empty and '.TW' in yahoo_symbol:
+            yahoo_symbol = yahoo_symbol.replace('.TW', '.TWO')
+            ticker = yf.Ticker(yahoo_symbol)
+            df = ticker.history(start=start_date, end=end_dt.strftime("%Y-%m-%d"))
+        
+        if df.empty:
+            return {"success": True, "symbol": symbol, "prices": [], "count": 0}
+        
+        prices = []
+        for date_idx, row in df.iterrows():
+            prices.append({
+                "date": date_idx.strftime("%Y-%m-%d"),
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume']),
+                "adjusted_close": float(row['Close'])
+            })
+        
         return {
-            "success": False,
-            "error": str(e),
-            "prices": []
+            "success": True,
+            "symbol": symbol,
+            "prices": prices,
+            "count": len(prices)
         }
+    except Exception as e:
+        return {"success": False, "error": str(e), "prices": []}
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-FastAPI server for Shioaji data fetching
+FastAPI server for Taiwan stock data fetching via Shioaji
 Provides REST endpoints for quote and historical data retrieval
+Falls back to Yahoo Finance when Shioaji quota is exceeded
 """
 import logging
 from datetime import datetime
@@ -11,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from config import Config
 from shioaji_client import ShioajiClient
+import yfinance as yf
 
 # Configure logging
 logging.basicConfig(
@@ -21,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Shioaji Data API",
-    description="REST API for fetching US stock data via Shioaji",
+    title="Taiwan Stock Data API",
+    description="REST API for fetching Taiwan stock data via Shioaji with Yahoo Finance fallback",
     version="1.0.0"
 )
 
@@ -141,10 +143,10 @@ async def health_check():
 @app.get("/quote/{symbol}", response_model=QuoteResponse)
 async def get_quote(symbol: str):
     """
-    Get current quote for a stock symbol
+    Get current quote for a Taiwan stock symbol
 
     Args:
-        symbol: Stock symbol (e.g., AAPL, GOOGL)
+        symbol: Taiwan stock symbol (e.g., 2330, 2330.TW)
 
     Returns:
         QuoteResponse with current price data
@@ -158,13 +160,16 @@ async def get_quote(symbol: str):
         # Get contract
         contract = client._get_contract(symbol)
         if not contract:
-            return QuoteResponse(
-                success=False,
-                error=f"Contract not found for {symbol}"
-            )
+            # Fallback to Yahoo Finance
+            logger.info(f"Contract not found, trying Yahoo Finance for {symbol}")
+            return await get_quote_yahoo(symbol)
 
-        # Fetch quote
-        quote = client.api.snapshots([contract])[0]
+        # Fetch quote from Shioaji
+        snapshots = client.api.snapshots([contract])
+        if not snapshots:
+            return await get_quote_yahoo(symbol)
+            
+        quote = snapshots[0]
 
         # Extract price
         price = None
@@ -174,10 +179,8 @@ async def get_quote(symbol: str):
             price = float(quote.last_price)
 
         if price is None:
-            return QuoteResponse(
-                success=False,
-                error=f"No price data available for {symbol}"
-            )
+            # Fallback to Yahoo Finance
+            return await get_quote_yahoo(symbol)
 
         return QuoteResponse(
             success=True,
@@ -191,10 +194,36 @@ async def get_quote(symbol: str):
 
     except Exception as e:
         logger.error(f"Error fetching quote for {symbol}: {e}")
+        # Fallback to Yahoo Finance
+        return await get_quote_yahoo(symbol)
+
+
+async def get_quote_yahoo(symbol: str) -> QuoteResponse:
+    """Fallback to Yahoo Finance for quote data"""
+    try:
+        # Convert to Yahoo Finance format (add .TW if not present)
+        yahoo_symbol = symbol if '.TW' in symbol or '.TWO' in symbol else f"{symbol}.TW"
+        logger.info(f"Fetching quote from Yahoo Finance for {yahoo_symbol}")
+        
+        ticker = yf.Ticker(yahoo_symbol)
+        info = ticker.info
+        
+        price = info.get('regularMarketPrice') or info.get('currentPrice')
+        if price is None:
+            return QuoteResponse(success=False, error=f"No price data from Yahoo Finance for {symbol}")
+        
         return QuoteResponse(
-            success=False,
-            error=str(e)
+            success=True,
+            symbol=symbol,
+            price=float(price),
+            open=float(info.get('regularMarketOpen')) if info.get('regularMarketOpen') else None,
+            high=float(info.get('regularMarketDayHigh')) if info.get('regularMarketDayHigh') else None,
+            low=float(info.get('regularMarketDayLow')) if info.get('regularMarketDayLow') else None,
+            volume=int(info.get('regularMarketVolume')) if info.get('regularMarketVolume') else None
         )
+    except Exception as e:
+        logger.error(f"Yahoo Finance quote failed for {symbol}: {e}")
+        return QuoteResponse(success=False, error=f"Failed to fetch quote: {str(e)}")
 
 
 @app.get("/history/{symbol}", response_model=HistoryResponse)
@@ -204,10 +233,10 @@ async def get_history(
     end_date: str = Query(..., description="End date in YYYY-MM-DD format")
 ):
     """
-    Get historical price data for a stock symbol
+    Get historical price data for a Taiwan stock symbol
 
     Args:
-        symbol: Stock symbol (e.g., AAPL, GOOGL)
+        symbol: Taiwan stock symbol (e.g., 2330, 2330.TW)
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
 
@@ -220,13 +249,20 @@ async def get_history(
 
         logger.info(f"Fetching history for {symbol} from {start_date} to {end_date}")
 
+        # Check API usage first
+        try:
+            usage = client.api.usage()
+            if hasattr(usage, 'remaining_bytes') and usage.remaining_bytes <= 0:
+                logger.warning(f"Shioaji API quota exceeded, falling back to Yahoo Finance")
+                return await get_history_yahoo(symbol, start_date, end_date)
+        except:
+            pass
+
         # Get contract
         contract = client._get_contract(symbol)
         if not contract:
-            return HistoryResponse(
-                success=False,
-                error=f"Contract not found for {symbol}"
-            )
+            logger.info(f"Contract not found, trying Yahoo Finance for {symbol}")
+            return await get_history_yahoo(symbol, start_date, end_date)
 
         # Validate dates
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
@@ -235,33 +271,21 @@ async def get_history(
         # Fetch kbars (daily candles)
         kbars = client.api.kbars(
             contract=contract,
-            start=start_dt.strftime("%Y-%m-%d"),
-            end=end_dt.strftime("%Y-%m-%d")
+            start=start_date,
+            end=end_date
         )
 
-        # Debug logging
-        logger.info(f"kbars object type: {type(kbars)}")
-        logger.info(f"kbars object: {kbars}")
-        if hasattr(kbars, '__dict__'):
-            logger.info(f"kbars __dict__: {kbars.__dict__}")
-
         # Convert kbars to price bars using correct Shioaji pattern
-        # Shioaji Kbars is a namedtuple-like object, unpack with {**kbars}
         prices = []
         
         try:
             # Unpack kbars to dict (correct Shioaji pattern)
             kbars_dict = {**kbars}
             
-            # Check if we have data
+            # Check if we have data - if empty, fallback to Yahoo Finance
             if not kbars_dict.get('ts') or len(kbars_dict['ts']) == 0:
-                logger.info(f"No kbars data for {symbol}")
-                return HistoryResponse(
-                    success=True,
-                    symbol=symbol,
-                    prices=[],
-                    count=0
-                )
+                logger.info(f"No kbars data from Shioaji for {symbol}, falling back to Yahoo Finance")
+                return await get_history_yahoo(symbol, start_date, end_date)
             
             num_bars = len(kbars_dict['ts'])
             logger.info(f"Processing {num_bars} kbars for {symbol}")
@@ -291,12 +315,11 @@ async def get_history(
                     
         except Exception as unpack_error:
             logger.error(f"Error unpacking kbars: {unpack_error}")
-            return HistoryResponse(
-                success=True,
-                symbol=symbol,
-                prices=[],
-                count=0
-            )
+            return await get_history_yahoo(symbol, start_date, end_date)
+
+        if len(prices) == 0:
+            # Fallback to Yahoo Finance if no data
+            return await get_history_yahoo(symbol, start_date, end_date)
 
         logger.info(f"Successfully fetched {len(prices)} price bars for {symbol}")
 
@@ -315,9 +338,68 @@ async def get_history(
         )
     except Exception as e:
         logger.error(f"Error fetching history for {symbol}: {e}")
+        # Fallback to Yahoo Finance
+        return await get_history_yahoo(symbol, start_date, end_date)
+
+
+async def get_history_yahoo(symbol: str, start_date: str, end_date: str) -> HistoryResponse:
+    """Fallback to Yahoo Finance for historical data"""
+    try:
+        # Convert to Yahoo Finance format (add .TW if not present)
+        yahoo_symbol = symbol if '.TW' in symbol or '.TWO' in symbol else f"{symbol}.TW"
+        logger.info(f"Fetching history from Yahoo Finance for {yahoo_symbol}")
+        
+        ticker = yf.Ticker(yahoo_symbol)
+        
+        # Add one day to end_date since yfinance end is exclusive
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        from datetime import timedelta
+        end_dt_inclusive = end_dt + timedelta(days=1)
+        
+        df = ticker.history(start=start_date, end=end_dt_inclusive.strftime("%Y-%m-%d"))
+        
+        if df.empty:
+            # Try OTC market (.TWO)
+            if '.TW' in yahoo_symbol:
+                yahoo_symbol = yahoo_symbol.replace('.TW', '.TWO')
+                logger.info(f"Trying OTC market: {yahoo_symbol}")
+                ticker = yf.Ticker(yahoo_symbol)
+                df = ticker.history(start=start_date, end=end_dt_inclusive.strftime("%Y-%m-%d"))
+        
+        if df.empty:
+            return HistoryResponse(
+                success=True,
+                symbol=symbol,
+                prices=[],
+                count=0
+            )
+        
+        prices = []
+        for date_idx, row in df.iterrows():
+            price_bar = PriceBar(
+                date=date_idx.strftime("%Y-%m-%d"),
+                open=float(row['Open']),
+                high=float(row['High']),
+                low=float(row['Low']),
+                close=float(row['Close']),
+                volume=int(row['Volume']),
+                adjusted_close=float(row['Close'])
+            )
+            prices.append(price_bar)
+        
+        logger.info(f"Yahoo Finance returned {len(prices)} price bars for {symbol}")
+        
+        return HistoryResponse(
+            success=True,
+            symbol=symbol,
+            prices=prices,
+            count=len(prices)
+        )
+    except Exception as e:
+        logger.error(f"Yahoo Finance history failed for {symbol}: {e}")
         return HistoryResponse(
             success=False,
-            error=str(e)
+            error=f"Failed to fetch history: {str(e)}"
         )
 
 
