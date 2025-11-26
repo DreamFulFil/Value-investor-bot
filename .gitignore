@@ -1,0 +1,56 @@
+# Database
+database.db
+*.db
+*.db-journal
+
+# Java / Maven
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+shioaji_bridge/__pycache__/
+shioaji_bridge/*.pyc
+shioaji_bridge/.pytest_cache/
+shioaji_bridge/venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables (encrypted values are safe to commit)
+# .env contains ENC() encrypted secrets
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Static resources (generated from frontend build)
+backend/src/main/resources/static/

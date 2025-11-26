@@ -1,0 +1,151 @@
+{
+  "translation": {
+    "nav": {
+      "dashboard": "儀表板",
+      "backtest": "回測實驗室",
+      "learning": "學習中心",
+      "goals": "投資目標",
+      "settings": "設定"
+    },
+    "wizard": {
+      "title": "歡迎使用價值投資機器人",
+      "subtitle": "讓我們開始您的投資旅程",
+      "step1": {
+        "title": "您想如何開始？",
+        "startFromZero": "從零開始",
+        "startFromZeroDesc": "從全新投資組合和初始存款開始",
+        "importExisting": "匯入現有投資組合",
+        "importExistingDesc": "已經擁有價值 NT$16,000 以上的股票？匯入它們",
+        "backtestOnly": "僅回測模式",
+        "backtestOnlyDesc": "模擬模式 - 不使用真實資金"
+      },
+      "step2": {
+        "title": "初始存款",
+        "subtitle": "您想投入多少資金開始？",
+        "amount": "金額"
+      },
+      "step3": {
+        "title": "準備就緒！",
+        "subtitle": "您的投資組合已準備好",
+        "mode": "交易模式",
+        "initialDeposit": "初始存款",
+        "confirm": "開始投資"
+      },
+      "next": "下一步",
+      "back": "返回"
+    },
+    "dashboard": {
+      "title": "儀表板",
+      "portfolioValue": "投資組合價值",
+      "totalValue": "總價值",
+      "dayChange": "24小時變化",
+      "allocation": "資產配置",
+      "dividendProgress": "股息收入進度",
+      "weeklyGoal": "每週目標",
+      "currentIncome": "目前每週收入",
+      "positions": "目前持倉",
+      "recentTransactions": "最近交易",
+      "insights": "市場洞察",
+      "portfolioReport": "投資組合報告",
+      "noPositions": "尚無持倉。開始投資以查看您的投資組合。",
+      "noTransactions": "尚無交易記錄。",
+      "currency": "NT$"
+    },
+    "positions": {
+      "symbol": "股票代碼",
+      "shares": "股數",
+      "avgCost": "平均成本",
+      "currentPrice": "目前價格",
+      "totalValue": "總價值",
+      "gainLoss": "損益",
+      "gainLossPercent": "損益%"
+    },
+    "transactions": {
+      "date": "日期",
+      "type": "類型",
+      "symbol": "股票代碼",
+      "shares": "股數",
+      "price": "價格",
+      "total": "總額",
+      "buy": "買入",
+      "sell": "賣出",
+      "dividend": "股息"
+    },
+    "backtest": {
+      "title": "回測實驗室",
+      "subtitle": "使用歷史數據測試您的投資策略",
+      "dateRange": "日期範圍",
+      "startDate": "開始日期",
+      "endDate": "結束日期",
+      "monthlyInvestment": "每月投資額",
+      "targetStocks": "目標股票",
+      "selectStocks": "選擇要包含的股票",
+      "runBacktest": "執行回測",
+      "results": "回測結果",
+      "totalReturn": "總回報",
+      "sharpeRatio": "夏普比率",
+      "maxDrawdown": "最大回撤",
+      "benchmark": "台灣加權指數基準",
+      "portfolio": "您的策略"
+    },
+    "learning": {
+      "title": "學習中心",
+      "subtitle": "每日投資技巧與教育",
+      "dailyTip": "今日學習小貼士",
+      "liked": "已按讚",
+      "recentTips": "最近的小貼士",
+      "categories": {
+        "all": "全部",
+        "dividends": "股息",
+        "valuation": "估值",
+        "risk": "風險管理",
+        "diversification": "多元化",
+        "strategy": "策略"
+      }
+    },
+    "goals": {
+      "title": "您的目標",
+      "subtitle": "追蹤您邁向財務自由的進度",
+      "weeklyIncome": "每週股息收入",
+      "target": "目標",
+      "monthlyInvestment": "每月投資追蹤器",
+      "invested": "本月已投資",
+      "nextRebalance": "下次再平衡",
+      "milestones": "投資組合里程碑",
+      "milestone": {
+        "first1k": "首個 NT$32,000",
+        "first5k": "首個 NT$160,000",
+        "first10k": "首個 NT$320,000",
+        "first50k": "首個 NT$1,600,000",
+        "first100k": "首個 NT$3,200,000"
+      }
+    },
+    "settings": {
+      "title": "設定",
+      "language": "語言",
+      "theme": "主題",
+      "light": "淺色",
+      "dark": "深色",
+      "notifications": "通知",
+      "tradingMode": "交易模式",
+      "simulation": "模擬",
+      "live": "實盤交易"
+    },
+    "common": {
+      "loading": "載入中...",
+      "error": "錯誤",
+      "success": "成功",
+      "cancel": "取消",
+      "save": "儲存",
+      "delete": "刪除",
+      "edit": "編輯",
+      "view": "查看",
+      "close": "關閉",
+      "search": "搜尋",
+      "filter": "篩選",
+      "export": "匯出",
+      "import": "匯入",
+      "refresh": "重新整理"
+    }
+  }
+}

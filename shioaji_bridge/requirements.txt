@@ -1,0 +1,17 @@
+# Shioaji Bridge Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Shioaji SDK for Sinopac broker integration
+shioaji>=1.1.4
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# FastAPI and web server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+
+# Additional dependencies that may be required by Shioaji
+requests>=2.31.0
+pandas>=2.0.0

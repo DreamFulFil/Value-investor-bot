@@ -1,0 +1,42 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:sqlite:database.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: true
+  sql:
+    init:
+      mode: never
+
+markets:
+  enabled:
+    - TW
+  primary: TW
+
+investment:
+  monthly-amount-twd: 16000
+  target-weekly-twd: 1600
+
+trading:
+  mode: SIMULATION
+  start-from-zero: false
+
+llm:
+  provider: OLLAMA
+  model: llama3.1:8b-instruct-q5_K_M
+  base-url: http://localhost:11434
+
+shioaji:
+  python-path: python
+  api-key: ${SHIOAJI_API_KEY:}
+  secret-key: ${SHIOAJI_SECRET_KEY:}
+  api-url: ${SHIOAJI_API_URL:http://127.0.0.1:8888}
