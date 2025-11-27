@@ -7,12 +7,12 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,46 +24,16 @@ public class StockUniverseService {
 
     @Autowired
     private StockUniverseRepository stockUniverseRepository;
-
-    /**
-     * Top 30 Taiwan dividend-paying stocks to pre-seed
-     */
-    private static final String[][] INITIAL_STOCKS = {
-        // Symbol, Name, Sector - All Taiwan stocks with .TW suffix
-        {"2330.TW", "Taiwan Semiconductor (TSMC)", "Technology"},
-        {"2317.TW", "Hon Hai Precision (Foxconn)", "Technology"},
-        {"2454.TW", "MediaTek", "Technology"},
-        {"2308.TW", "Delta Electronics", "Technology"},
-        {"2303.TW", "United Microelectronics (UMC)", "Technology"},
-        {"2357.TW", "Asustek Computer (ASUS)", "Technology"},
-        {"2382.TW", "Quanta Computer", "Technology"},
-        {"3008.TW", "Largan Precision", "Technology"},
-        {"2474.TW", "Catcher Technology", "Technology"},
-        {"2408.TW", "Nanya Technology", "Technology"},
-        {"2881.TW", "Fubon Financial", "Financials"},
-        {"2882.TW", "Cathay Financial", "Financials"},
-        {"2884.TW", "E.SUN Financial", "Financials"},
-        {"2886.TW", "Mega Financial", "Financials"},
-        {"2891.TW", "CTBC Financial", "Financials"},
-        {"2892.TW", "First Financial", "Financials"},
-        {"2801.TW", "Chang Hwa Bank", "Financials"},
-        {"2823.TW", "China Development Financial", "Financials"},
-        {"5880.TW", "Taiwan Cooperative Financial", "Financials"},
-        {"1301.TW", "Formosa Plastics", "Materials"},
-        {"1303.TW", "Nan Ya Plastics", "Materials"},
-        {"1326.TW", "Formosa Chemicals & Fibre", "Materials"},
-        {"2002.TW", "China Steel", "Materials"},
-        {"1216.TW", "Uni-President", "Consumer Staples"},
-        {"2912.TW", "President Chain Store", "Consumer Staples"},
-        {"1101.TW", "Taiwan Cement", "Materials"},
-        {"2105.TW", "Cheng Shin Rubber", "Consumer Discretionary"},
-        {"9910.TW", "FengTay Enterprise", "Consumer Discretionary"},
-        {"2207.TW", "Ho Tung Chemical", "Materials"},
-        {"2301.TW", "Lite-On Technology", "Technology"}
-    };
+    
+    @Autowired
+    private TaiwanStockScreenerService stockScreenerService;
+    
+    @Value("${app.stock-universe.initial-size:50}")
+    private int initialUniverseSize;
 
     /**
      * Initialize stock universe on application startup
+     * Dynamically fetches top Taiwan dividend stocks from TaiwanStockScreenerService
      */
     @PostConstruct
     @Transactional
@@ -71,22 +41,66 @@ public class StockUniverseService {
         long existingCount = stockUniverseRepository.countByActiveTrue();
 
         if (existingCount == 0) {
-            logger.info("Initializing stock universe with {} Taiwan dividend stocks", INITIAL_STOCKS.length);
+            // Get top dividend stocks from screener service
+            List<TaiwanStockScreenerService.StockInfo> topStocks = 
+                stockScreenerService.getTopDividendStocks(initialUniverseSize);
+            
+            logger.info("Initializing stock universe with top {} Taiwan dividend stocks", topStocks.size());
 
-            for (String[] stockData : INITIAL_STOCKS) {
+            int successCount = 0;
+            for (TaiwanStockScreenerService.StockInfo stockInfo : topStocks) {
                 try {
-                    StockUniverse stock = new StockUniverse(stockData[0], stockData[1], stockData[2]);
+                    StockUniverse stock = new StockUniverse(
+                        stockInfo.getSymbol(), 
+                        stockInfo.getName(), 
+                        stockInfo.getSector()
+                    );
                     stockUniverseRepository.save(stock);
-                    logger.debug("Added stock to universe: {} - {}", stockData[0], stockData[1]);
+                    logger.debug("Added stock to universe: {} - {}", stockInfo.getSymbol(), stockInfo.getName());
+                    successCount++;
                 } catch (Exception e) {
-                    logger.error("Failed to add stock {} to universe: {}", stockData[0], e.getMessage());
+                    logger.error("Failed to add stock {} to universe: {}", stockInfo.getSymbol(), e.getMessage());
                 }
             }
 
-            logger.info("Stock universe initialized with {} stocks", INITIAL_STOCKS.length);
+            logger.info("Stock universe initialized with {} stocks", successCount);
         } else {
             logger.info("Stock universe already initialized with {} active stocks", existingCount);
         }
+    }
+    
+    /**
+     * Refresh stock universe with latest top dividend stocks
+     * Can be called periodically or manually to update the universe
+     */
+    @Transactional
+    public int refreshUniverse() {
+        logger.info("Refreshing stock universe with latest dividend stocks");
+        
+        List<TaiwanStockScreenerService.StockInfo> topStocks = 
+            stockScreenerService.getAllDividendStocks();
+        
+        int addedCount = 0;
+        for (TaiwanStockScreenerService.StockInfo stockInfo : topStocks) {
+            Optional<StockUniverse> existing = stockUniverseRepository.findBySymbol(stockInfo.getSymbol());
+            if (existing.isEmpty()) {
+                try {
+                    StockUniverse stock = new StockUniverse(
+                        stockInfo.getSymbol(), 
+                        stockInfo.getName(), 
+                        stockInfo.getSector()
+                    );
+                    stockUniverseRepository.save(stock);
+                    addedCount++;
+                    logger.info("Added new stock to universe: {}", stockInfo.getSymbol());
+                } catch (Exception e) {
+                    logger.error("Failed to add stock {}: {}", stockInfo.getSymbol(), e.getMessage());
+                }
+            }
+        }
+        
+        logger.info("Universe refresh complete. Added {} new stocks", addedCount);
+        return addedCount;
     }
 
     /**

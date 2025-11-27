@@ -152,6 +152,7 @@ public class TradingController {
         dto.setEndTime(result.getEndTime());
         dto.setMissedMonths(result.getMissedMonths());
         dto.setErrorMessage(result.getErrorMessage());
+        dto.setMessage(result.getMessage());
 
         // Convert monthly results
         List<RebalanceResultDTO.MonthlyRebalanceDTO> monthlyDTOs = result.getMonthlyResults().stream()

@@ -242,4 +242,24 @@ public class TradingService {
     public Optional<PositionHistory> getCurrentPosition(String symbol) {
         return positionHistoryRepository.findLatestPositionBySymbol(symbol);
     }
+    
+    /**
+     * Create a deposit transaction (for simulation/backtest mode)
+     */
+    @Transactional
+    public TransactionLog createDeposit(BigDecimal amount, TransactionLog.TradingMode mode, String notes) {
+        logger.info("Creating deposit: NT${} in {} mode", amount, mode);
+        
+        TransactionLog deposit = new TransactionLog(
+                TransactionLog.TransactionType.DEPOSIT,
+                null, // No symbol for deposits
+                null, // No quantity for deposits
+                null, // No price for deposits
+                amount,
+                mode,
+                notes != null ? notes : "Cash deposit"
+        );
+        
+        return transactionLogRepository.save(deposit);
+    }
 }

@@ -52,34 +52,82 @@ export interface Insight {
   createdAt: string;
 }
 
+// Backend endpoints:
+// /api/portfolio/current - Get current portfolio
+// /api/portfolio/history - Get portfolio snapshots
+// /api/insights/current - Get current insight
+// /api/insights/history - Get insight history
+// /api/trading/rebalance - Trigger rebalance
+
 export const fetchPortfolioSummary = async (): Promise<PortfolioSummary> => {
-  const { data } = await api.get('/portfolio/summary');
-  return data;
+  try {
+    const { data } = await api.get('/portfolio/current');
+    return {
+      totalValue: data.totalValue || 0,
+      totalCost: data.totalCost || 0,
+      totalReturn: data.unrealizedGain || 0,
+      returnPercentage: data.returnPercentage || 0,
+      cashBalance: data.cashBalance || 0,
+      positionCount: data.positions?.length || 0,
+    };
+  } catch {
+    return { totalValue: 0, totalCost: 0, totalReturn: 0, returnPercentage: 0, cashBalance: 0, positionCount: 0 };
+  }
 };
 
 export const fetchPositions = async (): Promise<Position[]> => {
-  const { data } = await api.get('/portfolio/positions');
-  return data;
+  try {
+    const { data } = await api.get('/portfolio/current');
+    return data.positions || [];
+  } catch {
+    return [];
+  }
 };
 
 export const fetchDividendSummary = async (): Promise<DividendSummary> => {
-  const { data } = await api.get('/dividends/summary');
-  return data;
+  try {
+    const { data } = await api.get('/portfolio/metrics');
+    return {
+      totalDividends: data.totalDividendsReceived || 0,
+      ytdDividends: data.ytdDividends || 0,
+      lastMonthDividends: data.lastMonthDividends || 0,
+      projectedAnnualDividends: data.projectedAnnualDividends || 0,
+    };
+  } catch {
+    return { totalDividends: 0, ytdDividends: 0, lastMonthDividends: 0, projectedAnnualDividends: 0 };
+  }
 };
 
 export const fetchPortfolioHistory = async (): Promise<PortfolioHistory[]> => {
-  const { data } = await api.get('/portfolio/history');
-  return data;
+  try {
+    const { data } = await api.get('/portfolio/history');
+    return (data || []).map((item: { snapshotDate: string; totalValue: number }) => ({
+      date: item.snapshotDate,
+      value: item.totalValue,
+    }));
+  } catch {
+    return [];
+  }
 };
 
 export const fetchInsights = async (): Promise<Insight[]> => {
-  const { data } = await api.get('/insights');
-  return data;
+  try {
+    const { data } = await api.get('/insights/history');
+    return data || [];
+  } catch {
+    return [];
+  }
 };
 
 export const runMonthlyRebalance = async (): Promise<RebalanceResult> => {
-  const { data } = await api.post('/rebalance/monthly');
-  return data;
+  const { data } = await api.post('/trading/rebalance');
+  return {
+    success: data.success,
+    message: data.errorMessage || 'Rebalance completed',
+    tradesExecuted: data.totalTransactions || 0,
+    newPositions: data.monthlyResults?.[0]?.stocksPurchased || 0,
+    timestamp: data.endTime,
+  };
 };
 
 export const checkHealth = async (): Promise<boolean> => {

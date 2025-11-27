@@ -10,6 +10,7 @@ public class RebalanceResultDTO {
     private int missedMonths;
     private int totalTransactions;
     private String errorMessage;
+    private String message;
     private List<MonthlyRebalanceDTO> monthlyResults;
 
     // Constructors
@@ -63,6 +64,14 @@ public class RebalanceResultDTO {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+    
+    public String getMessage() {
+        return message;
+    }
+    
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public List<MonthlyRebalanceDTO> getMonthlyResults() {

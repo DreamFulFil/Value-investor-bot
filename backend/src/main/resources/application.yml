@@ -2,6 +2,12 @@ server:
   port: 8080
 
 spring:
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
+          no-store: true
   datasource:
     url: jdbc:sqlite:database.db
     driver-class-name: org.sqlite.JDBC

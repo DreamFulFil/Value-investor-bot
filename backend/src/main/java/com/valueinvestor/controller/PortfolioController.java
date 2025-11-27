@@ -68,12 +68,20 @@ public class PortfolioController {
      */
     @GetMapping("/history")
     public ResponseEntity<List<PortfolioSnapshot>> getPortfolioHistory(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
         logger.info("GET /api/portfolio/history?startDate={}&endDate={}", startDate, endDate);
 
         try {
+            // Default to last 30 days if no dates provided
+            if (startDate == null) {
+                startDate = LocalDateTime.now().minusDays(30);
+            }
+            if (endDate == null) {
+                endDate = LocalDateTime.now();
+            }
+            
             List<PortfolioSnapshot> snapshots = portfolioService.getPortfolioHistory(startDate, endDate);
             return ResponseEntity.ok(snapshots);
 

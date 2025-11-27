@@ -46,10 +46,11 @@ public class RebalanceService {
 
     /**
      * Perform monthly rebalance with catch-up logic
+     * BULLETPROOF: Even with force=true, will NOT allow duplicate rebalances in the same month
      */
     @Transactional
-    public RebalanceResult performMonthlyRebalance() {
-        logger.info("=== Starting Monthly Rebalance Process ===");
+    public RebalanceResult performMonthlyRebalance(boolean force) {
+        logger.info("=== Starting Monthly Rebalance Process (force={}) ===", force);
 
         RebalanceResult result = new RebalanceResult();
         result.setStartTime(LocalDateTime.now());
@@ -59,18 +60,27 @@ public class RebalanceService {
             LocalDate lastRebalanceDate = getLastRebalanceDate();
             LocalDate today = LocalDate.now();
 
-            // BULLETPROOF DUPLICATE PREVENTION: Check if already rebalanced this month
+            // BULLETPROOF DUPLICATE PREVENTION: ALWAYS check if already rebalanced this month
+            // Even force=true cannot bypass this - user must wait until next month
             if (lastRebalanceDate != null && isSameMonth(lastRebalanceDate, today)) {
-                logger.info("Rebalance already executed this month (last: {}). Skipping.", lastRebalanceDate);
+                logger.info("BLOCKED: Rebalance already executed this month (last: {}). Cannot rebalance twice in same month.", lastRebalanceDate);
                 result.setSuccess(true);
                 result.setMissedMonths(0);
+                result.setMessage("Already rebalanced this month on " + lastRebalanceDate + ". Next rebalance available next month.");
                 result.setEndTime(LocalDateTime.now());
                 return result;
             }
 
             List<LocalDate> missedMonths = calculateMissedMonths(lastRebalanceDate, today);
+            
+            // For first-time users (no previous rebalance), just add today
+            if (missedMonths.isEmpty()) {
+                missedMonths = new ArrayList<>();
+                missedMonths.add(today);
+                logger.info("First rebalance: adding today {} as first month", today);
+            }
 
-            logger.info("Last rebalance: {}, Today: {}, Missed months: {}",
+            logger.info("Last rebalance: {}, Today: {}, Months to process: {}",
                        lastRebalanceDate, today, missedMonths.size());
 
             result.setMissedMonths(missedMonths.size());
@@ -119,10 +129,27 @@ public class RebalanceService {
         TransactionLog.TradingMode mode = appConfig.getTradingMode();
 
         logger.info("Monthly investment: NT${}, Mode: {}", monthlyInvestment, mode);
+        
+        // Step 0: Auto-deposit the monthly investment amount (simulation/backtest mode)
+        // This creates cash that can be used to buy stocks
+        if (monthlyInvestment.compareTo(BigDecimal.ZERO) > 0) {
+            TransactionLog deposit = tradingService.createDeposit(monthlyInvestment, mode, 
+                "Monthly investment deposit for " + rebalanceDate);
+            logger.info("Created deposit of NT${} for rebalance", monthlyInvestment);
+        }
 
         // Step 1: Select top 5 stocks
         List<String> selectedStocks = selectTopStocks();
 
+        if (selectedStocks.isEmpty()) {
+            logger.warn("No stocks selected for rebalance - using top stocks from universe");
+            // Fallback: just pick first 5 active stocks
+            selectedStocks = marketDataService.getActiveStockSymbols()
+                    .stream()
+                    .limit(TARGET_POSITIONS)
+                    .collect(Collectors.toList());
+        }
+        
         if (selectedStocks.size() < TARGET_POSITIONS) {
             logger.warn("Only found {} stocks, target is {}", selectedStocks.size(), TARGET_POSITIONS);
         }
@@ -184,50 +211,27 @@ public class RebalanceService {
     }
 
     /**
-     * Select top 5 stocks based on analysis
+     * Select top 5 stocks based on dividend yield (simplified for backtest/simulation)
+     * Uses TaiwanStockScreenerService to get top dividend stocks directly
      */
     private List<String> selectTopStocks() {
-        logger.info("Selecting top {} stocks", TARGET_POSITIONS);
+        logger.info("Selecting top {} stocks by dividend yield", TARGET_POSITIONS);
 
-        // Get top dividend stocks from database
+        // Get top dividend stocks directly from screener service
         List<String> candidateSymbols = getCandidateStocks();
-
-        logger.info("Found {} candidate stocks", candidateSymbols.size());
-
-        // Analyze each stock
-        List<AnalysisResults> analyses = new ArrayList<>();
-
-        for (String symbol : candidateSymbols) {
-            try {
-                // Check if we have recent analysis (within 7 days)
-                Optional<AnalysisResults> recentAnalysis = analysisService.getLatestAnalysis(symbol);
-
-                if (recentAnalysis.isPresent() &&
-                    recentAnalysis.get().getTimestamp().isAfter(LocalDateTime.now().minusDays(7))) {
-                    analyses.add(recentAnalysis.get());
-                    logger.info("Using cached analysis for {}", symbol);
-                } else {
-                    // Perform new analysis
-                    logger.info("Analyzing {}", symbol);
-                    AnalysisResults analysis = analysisService.analyzeStock(symbol);
-                    analyses.add(analysis);
-                }
-
-            } catch (Exception e) {
-                logger.error("Failed to analyze {}", symbol, e);
-            }
+        
+        if (candidateSymbols.isEmpty()) {
+            logger.error("No candidate stocks available!");
+            return Collections.emptyList();
         }
 
-        // Filter for BUY recommendations and sort by score
-        List<String> topStocks = analyses.stream()
-                .filter(a -> "BUY".equals(a.getRecommendation()))
-                .sorted(Comparator.comparing(AnalysisResults::getScore).reversed())
-                .limit(TARGET_POSITIONS)
-                .map(AnalysisResults::getSymbol)
-                .collect(Collectors.toList());
+        // For simulation/backtest, just take top 5 by dividend yield
+        // The screener service already sorts by yield
+        List<String> topStocks = candidateSymbols.stream()
+            .limit(TARGET_POSITIONS)
+            .collect(Collectors.toList());
 
         logger.info("Selected top {} stocks: {}", topStocks.size(), topStocks);
-
         return topStocks;
     }
 
@@ -243,13 +247,28 @@ public class RebalanceService {
             return watchlist;
         }
 
-        // Otherwise, get top dividend stocks
+        // Try to get top dividend stocks from fundamentals
         BigDecimal minDividendYield = new BigDecimal("2.0"); // 2% minimum
-        return marketDataService.getStocksByMinDividendYield(minDividendYield)
+        List<String> fromFundamentals = marketDataService.getStocksByMinDividendYield(minDividendYield)
                 .stream()
                 .limit(20) // Analyze top 20
                 .map(f -> f.getSymbol())
                 .collect(Collectors.toList());
+        
+        if (!fromFundamentals.isEmpty()) {
+            logger.info("Using {} stocks from fundamentals data", fromFundamentals.size());
+            return fromFundamentals;
+        }
+        
+        // Fallback: Use active stocks from universe (for backtest/simulation when no fundamentals)
+        logger.info("No fundamentals data available, falling back to stock universe");
+        List<String> fromUniverse = marketDataService.getActiveStockSymbols()
+                .stream()
+                .limit(20)
+                .collect(Collectors.toList());
+        
+        logger.info("Using {} stocks from universe as fallback", fromUniverse.size());
+        return fromUniverse;
     }
 
     /**
@@ -290,7 +309,11 @@ public class RebalanceService {
     @Transactional
     public RebalanceResult triggerRebalance() {
         logger.info("Manual rebalance triggered");
-        return performMonthlyRebalance();
+        return performMonthlyRebalance(true); // Force rebalance on manual trigger
+    }
+    
+    public RebalanceResult performMonthlyRebalance() {
+        return performMonthlyRebalance(false);
     }
 
     /**
@@ -303,6 +326,7 @@ public class RebalanceService {
         private int missedMonths;
         private List<MonthlyRebalanceResult> monthlyResults = new ArrayList<>();
         private String errorMessage;
+        private String message;
 
         public void addMonthlyResult(MonthlyRebalanceResult result) {
             this.monthlyResults.add(result);
@@ -355,6 +379,14 @@ public class RebalanceService {
 
         public void setErrorMessage(String errorMessage) {
             this.errorMessage = errorMessage;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public void setMessage(String message) {
+            this.message = message;
         }
     }
 

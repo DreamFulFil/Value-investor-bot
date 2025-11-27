@@ -35,6 +35,9 @@ public class MarketDataService {
 
     @Autowired
     private com.valueinvestor.repository.StockPriceHistoryRepository priceHistoryRepository;
+    
+    @Autowired
+    private com.valueinvestor.repository.StockUniverseRepository stockUniverseRepository;
 
     // Circuit breaker for Yahoo Finance
     private final AtomicInteger yahooFailureCount = new AtomicInteger(0);
@@ -257,6 +260,16 @@ public class MarketDataService {
      */
     public List<StockFundamentals> getStocksByMinDividendYield(BigDecimal minYield) {
         return fundamentalsRepository.findStocksByMinDividendYield(minYield);
+    }
+    
+    /**
+     * Get list of active stock symbols from universe (fallback when no fundamentals)
+     */
+    public List<String> getActiveStockSymbols() {
+        return stockUniverseRepository.findByActiveTrue()
+                .stream()
+                .map(stock -> stock.getSymbol())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /**
