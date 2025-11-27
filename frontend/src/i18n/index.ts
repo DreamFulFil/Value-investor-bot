@@ -35,8 +35,10 @@ const resources = {
       darkMode: 'Dark Mode',
       lastRebalance: 'Last Rebalance',
       never: 'Never',
-      success: 'Success!',
+      success: 'Success! Stocks purchased.',
       error: 'Error',
+      goLive: 'Go Live',
+      alreadyRebalancedThisMonth: 'Already rebalanced this month. Next rebalance available next month.',
     },
   },
   zh: {
@@ -72,8 +74,10 @@ const resources = {
       darkMode: '深色模式',
       lastRebalance: '上次再平衡',
       never: '從未',
-      success: '成功！',
+      success: '成功！已買入股票。',
       error: '錯誤',
+      goLive: '開始真實投資',
+      alreadyRebalancedThisMonth: '本月已執行再平衡。下次再平衡將於下個月可用。',
     },
   },
 };

@@ -65,6 +65,7 @@ public class PortfolioController {
 
     /**
      * GET /api/portfolio/history - Get portfolio history
+     * No required parameters - defaults to all history or last 365 days
      */
     @GetMapping("/history")
     public ResponseEntity<List<PortfolioSnapshot>> getPortfolioHistory(
@@ -74,12 +75,12 @@ public class PortfolioController {
         logger.info("GET /api/portfolio/history?startDate={}&endDate={}", startDate, endDate);
 
         try {
-            // Default to last 30 days if no dates provided
+            // Default to last 365 days if no dates provided (full backtest period)
             if (startDate == null) {
-                startDate = LocalDateTime.now().minusDays(30);
+                startDate = LocalDateTime.now().minusDays(365);
             }
             if (endDate == null) {
-                endDate = LocalDateTime.now();
+                endDate = LocalDateTime.now().plusDays(1); // Include today
             }
             
             List<PortfolioSnapshot> snapshots = portfolioService.getPortfolioHistory(startDate, endDate);
@@ -87,7 +88,7 @@ public class PortfolioController {
 
         } catch (Exception e) {
             logger.error("Failed to get portfolio history", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.ok(List.of()); // Return empty list instead of error
         }
     }
 

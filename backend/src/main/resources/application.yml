@@ -23,26 +23,36 @@ spring:
     init:
       mode: never
 
+# Taiwan-focused market configuration
 markets:
   enabled:
-    - TW
-  primary: TW
+    - TAIWAN
+  primary: TAIWAN
 
+# Investment configuration (all amounts in NT$)
 investment:
   monthly-amount-twd: 16000
   target-weekly-twd: 1600
 
+# Trading mode: SIMULATION (default) or LIVE
 trading:
   mode: SIMULATION
-  start-from-zero: false
+  start-from-zero: true
 
+# LLM configuration for AI insights (explanations only, never stock picking)
 llm:
   provider: OLLAMA
   model: llama3.1:8b-instruct-q5_K_M
   base-url: http://localhost:11434
 
+# Shioaji API configuration for Taiwan stock data
 shioaji:
-  python-path: python
+  python-path: python3
   api-key: ${SHIOAJI_API_KEY:}
   secret-key: ${SHIOAJI_SECRET_KEY:}
   api-url: ${SHIOAJI_API_URL:http://127.0.0.1:8888}
+
+# Stock universe configuration
+app:
+  stock-universe:
+    initial-size: 50

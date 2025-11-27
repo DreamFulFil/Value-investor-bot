@@ -100,10 +100,12 @@ export const fetchDividendSummary = async (): Promise<DividendSummary> => {
 
 export const fetchPortfolioHistory = async (): Promise<PortfolioHistory[]> => {
   try {
+    // No date params needed - backend defaults to last 365 days
     const { data } = await api.get('/portfolio/history');
-    return (data || []).map((item: { snapshotDate: string; totalValue: number }) => ({
-      date: item.snapshotDate,
-      value: item.totalValue,
+    if (!Array.isArray(data)) return [];
+    return data.map((item: { timestamp?: string; snapshotDate?: string; totalValue: number }) => ({
+      date: item.timestamp || item.snapshotDate || new Date().toISOString(),
+      value: item.totalValue || 0,
     }));
   } catch {
     return [];

@@ -6,3 +6,4 @@ export { PortfolioChart } from './PortfolioChart';
 export { AllocationPie } from './AllocationPie';
 export { HoldingsTable } from './HoldingsTable';
 export { InsightsPanel } from './InsightsPanel';
+export { GoLiveWizard } from './GoLiveWizard';

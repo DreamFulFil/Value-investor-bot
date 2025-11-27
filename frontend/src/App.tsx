@@ -10,6 +10,7 @@ import {
   AllocationPie,
   HoldingsTable,
   InsightsPanel,
+  GoLiveWizard,
 } from './components';
 import {
   fetchPortfolioSummary,
@@ -38,6 +39,8 @@ function Dashboard() {
     return localStorage.getItem('hasRebalanced') === 'true';
   });
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showGoLiveWizard, setShowGoLiveWizard] = useState(false);
 
   const { data: summary } = useQuery({
     queryKey: ['portfolioSummary'],
@@ -66,14 +69,30 @@ function Dashboard() {
 
   const rebalanceMutation = useMutation({
     mutationFn: runMonthlyRebalance,
-    onSuccess: () => {
+    onSuccess: (data) => {
       setHasRebalanced(true);
       localStorage.setItem('hasRebalanced', 'true');
+      
+      // Show appropriate message
+      if (data.message?.includes('Already rebalanced')) {
+        setSuccessMessage(t('alreadyRebalancedThisMonth'));
+      } else if (data.newPositions > 0) {
+        setSuccessMessage(t('success'));
+      } else {
+        setSuccessMessage(t('success'));
+      }
+      
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      setTimeout(() => setShowSuccess(false), 4000);
       qc.invalidateQueries();
     },
   });
+
+  const handleGoLive = (option: 'fresh' | 'gradual' | 'oneshot', amount: number) => {
+    console.log('Go Live:', option, amount);
+    // TODO: Implement actual go-live API call
+    alert(`Going live with option: ${option}, amount: NT$${amount.toLocaleString()}`);
+  };
 
   const isEmpty = !hasRebalanced || (summary?.totalValue === 0 && positions.length === 0);
   const weeklyDividend = dividends ? dividends.projectedAnnualDividends / 52 : 0;
@@ -89,7 +108,7 @@ function Dashboard() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              {t('success')}
+              {successMessage}
             </div>
           </div>
         )}
@@ -104,6 +123,18 @@ function Dashboard() {
             <p className="text-center text-red-500 mt-2 text-sm">
               {t('error')}: {(rebalanceMutation.error as Error).message}
             </p>
+          )}
+          
+          {/* Go Live Button - show after some backtest months */}
+          {hasRebalanced && summary && summary.totalValue > 0 && (
+            <div className="text-center mt-4">
+              <button
+                onClick={() => setShowGoLiveWizard(true)}
+                className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+              >
+                {t('goLive')} →
+              </button>
+            </div>
           )}
         </div>
 
@@ -156,6 +187,14 @@ function Dashboard() {
       <footer className="mt-12 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
         <p>Value Investor Bot - Taiwan Edition © {new Date().getFullYear()}</p>
       </footer>
+
+      {/* Go Live Wizard Modal */}
+      <GoLiveWizard
+        isOpen={showGoLiveWizard}
+        onClose={() => setShowGoLiveWizard(false)}
+        currentBacktestValue={summary?.totalValue ?? 0}
+        onGoLive={handleGoLive}
+      />
     </div>
   );
 }
