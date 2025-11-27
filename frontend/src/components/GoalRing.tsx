@@ -8,7 +8,9 @@ interface GoalRingProps {
 
 export function GoalRing({ current, target, isEmpty }: GoalRingProps) {
   const { t } = useTranslation();
-  const percentage = Math.min((current / target) * 100, 100);
+  const safeTarget = target || 1;
+  const safeCurrent = current ?? 0;
+  const percentage = Math.min((safeCurrent / safeTarget) * 100, 100);
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
@@ -67,7 +69,7 @@ export function GoalRing({ current, target, isEmpty }: GoalRingProps) {
         
         <div className="mt-4 text-center">
           <p className="text-lg font-semibold text-gray-900 dark:text-white">
-            NT${current.toLocaleString()} / NT${target.toLocaleString()}
+            NT${safeCurrent.toLocaleString()} / NT${safeTarget.toLocaleString()}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('weeklyGoal')}

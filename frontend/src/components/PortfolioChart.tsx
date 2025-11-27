@@ -63,7 +63,7 @@ export function PortfolioChart({ data, isEmpty }: PortfolioChartProps) {
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
               }}
-              formatter={(value: number) => [`NT$${value.toLocaleString()}`, 'Value']}
+              formatter={(value: number) => [`NT$${(value ?? 0).toLocaleString()}`, 'Value']}
             />
             <Line
               type="monotone"

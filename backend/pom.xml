@@ -127,7 +127,6 @@
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
             <version>1.15.10</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -54,7 +54,7 @@ export function AllocationPie({ positions, isEmpty }: AllocationPieProps) {
             </Pie>
             <Tooltip
               formatter={(value: number, name: string) => [
-                `NT$${value.toLocaleString()}`,
+                `NT$${(value ?? 0).toLocaleString()}`,
                 name,
               ]}
               contentStyle={{

@@ -102,7 +102,18 @@ export const fetchPortfolioSummary = async (): Promise<PortfolioSummary> => {
 export const fetchPositions = async (): Promise<Position[]> => {
   try {
     const { data } = await api.get('/portfolio/current');
-    return data.positions || [];
+    const positions = data.positions || [];
+    const totalValue = data.totalValue || 1;
+    return positions.map((p: { symbol: string; quantity: number; currentPrice: number; marketValue: number; averagePrice: number; unrealizedPL: number }) => ({
+      symbol: p.symbol,
+      name: p.symbol,
+      shares: p.quantity || 0,
+      currentPrice: p.currentPrice || 0,
+      marketValue: p.marketValue || 0,
+      costBasis: (p.quantity || 0) * (p.averagePrice || 0),
+      unrealizedGain: p.unrealizedPL || 0,
+      weight: totalValue > 0 ? ((p.marketValue || 0) / totalValue) * 100 : 0,
+    }));
   } catch {
     return [];
   }

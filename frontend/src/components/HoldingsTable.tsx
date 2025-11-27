@@ -60,14 +60,14 @@ export function HoldingsTable({ positions, isEmpty }: HoldingsTableProps) {
                     {position.name}
                   </td>
                   <td className="py-3 px-2 text-right text-gray-900 dark:text-white">
-                    {position.shares.toLocaleString()}
+                    {(position.shares ?? 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-2 text-right text-gray-900 dark:text-white">
-                    NT${position.marketValue.toLocaleString()}
+                    NT${(position.marketValue ?? 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-2 text-right">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                      {position.weight.toFixed(1)}%
+                      {(position.weight ?? 0).toFixed(1)}%
                     </span>
                   </td>
                 </tr>
