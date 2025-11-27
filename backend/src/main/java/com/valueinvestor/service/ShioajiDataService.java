@@ -56,6 +56,31 @@ public class ShioajiDataService {
     }
 
     /**
+     * Get current API quota status
+     */
+    public QuotaStatus getQuotaStatus() {
+        try {
+            String url = shioajiApiUrl + "/quota";
+            QuotaResponse response = restTemplate.getForObject(url, QuotaResponse.class);
+            
+            if (response == null) {
+                return QuotaStatus.defaultStatus();
+            }
+            
+            return new QuotaStatus(
+                response.usedMB != null ? response.usedMB : 0.0,
+                response.limitMB != null ? response.limitMB : 500.0,
+                response.remainingMB != null ? response.remainingMB : 500.0,
+                response.percentageUsed != null ? response.percentageUsed : 0.0,
+                response.fallbackActive != null ? response.fallbackActive : false
+            );
+        } catch (Exception e) {
+            logger.warn("Could not fetch quota status: {}", e.getMessage());
+            return QuotaStatus.defaultStatus();
+        }
+    }
+
+    /**
      * Get current quote for a symbol
      */
     public QuoteDTO getQuote(String symbol) {
@@ -195,5 +220,44 @@ public class ShioajiDataService {
         public String status;
         public boolean connected;
         public String message;
+    }
+
+    private static class QuotaResponse {
+        public Boolean success;
+        public Double usedMB;
+        public Double limitMB;
+        public Double remainingMB;
+        public Double percentageUsed;
+        public Boolean fallbackActive;
+        public String error;
+    }
+
+    /**
+     * Quota status DTO
+     */
+    public static class QuotaStatus {
+        private final double usedMB;
+        private final double limitMB;
+        private final double remainingMB;
+        private final double percentageUsed;
+        private final boolean fallbackActive;
+
+        public QuotaStatus(double usedMB, double limitMB, double remainingMB, double percentageUsed, boolean fallbackActive) {
+            this.usedMB = usedMB;
+            this.limitMB = limitMB;
+            this.remainingMB = remainingMB;
+            this.percentageUsed = percentageUsed;
+            this.fallbackActive = fallbackActive;
+        }
+
+        public static QuotaStatus defaultStatus() {
+            return new QuotaStatus(0, 500, 500, 0, false);
+        }
+
+        public double getUsedMB() { return usedMB; }
+        public double getLimitMB() { return limitMB; }
+        public double getRemainingMB() { return remainingMB; }
+        public double getPercentageUsed() { return percentageUsed; }
+        public boolean isFallbackActive() { return fallbackActive; }
     }
 }

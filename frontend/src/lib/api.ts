@@ -52,6 +52,14 @@ export interface Insight {
   createdAt: string;
 }
 
+export interface QuotaStatus {
+  usedMB: number;
+  limitMB: number;
+  remainingMB: number;
+  percentageUsed: number;
+  fallbackActive: boolean;
+}
+
 // Backend endpoints:
 // /api/portfolio/current - Get current portfolio
 // /api/portfolio/history - Get portfolio snapshots
@@ -130,6 +138,21 @@ export const runMonthlyRebalance = async (): Promise<RebalanceResult> => {
     newPositions: data.monthlyResults?.[0]?.stocksPurchased || 0,
     timestamp: data.endTime,
   };
+};
+
+export const fetchQuotaStatus = async (): Promise<QuotaStatus> => {
+  try {
+    const { data } = await api.get('/quota');
+    return {
+      usedMB: data.usedMB || 0,
+      limitMB: data.limitMB || 500,
+      remainingMB: data.remainingMB || 500,
+      percentageUsed: data.percentageUsed || 0,
+      fallbackActive: data.fallbackActive || false,
+    };
+  } catch {
+    return { usedMB: 0, limitMB: 500, remainingMB: 500, percentageUsed: 0, fallbackActive: false };
+  }
 };
 
 export const checkHealth = async (): Promise<boolean> => {

@@ -11,6 +11,7 @@ import {
   HoldingsTable,
   InsightsPanel,
   GoLiveWizard,
+  QuotaCard,
 } from './components';
 import {
   fetchPortfolioSummary,
@@ -18,6 +19,7 @@ import {
   fetchDividendSummary,
   fetchPortfolioHistory,
   fetchInsights,
+  fetchQuotaStatus,
   runMonthlyRebalance,
 } from './lib/api';
 import './i18n';
@@ -65,6 +67,12 @@ function Dashboard() {
   const { data: insights = [] } = useQuery({
     queryKey: ['insights'],
     queryFn: fetchInsights,
+  });
+
+  const { data: quota, isLoading: quotaLoading } = useQuery({
+    queryKey: ['quota'],
+    queryFn: fetchQuotaStatus,
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes
   });
 
   const rebalanceMutation = useMutation({
@@ -138,7 +146,7 @@ function Dashboard() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatCard
             title={t('portfolioValue')}
             value={summary?.totalValue ?? 0}
@@ -166,7 +174,18 @@ function Dashboard() {
             isEmpty={isEmpty}
             icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
           />
+          <QuotaCard quota={quota} isLoading={quotaLoading} />
         </div>
+
+        {/* Fallback warning toast */}
+        {quota?.fallbackActive && (
+          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-700 dark:text-yellow-400 text-sm flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            {t('quotaLowFallback')}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <PortfolioChart data={history} isEmpty={isEmpty} />

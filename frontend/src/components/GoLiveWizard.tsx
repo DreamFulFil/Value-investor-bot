@@ -9,7 +9,7 @@ interface GoLiveWizardProps {
 }
 
 export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }: GoLiveWizardProps) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [selectedOption, setSelectedOption] = useState<'fresh' | 'gradual' | 'oneshot' | null>(null);
   const [depositAmount, setDepositAmount] = useState(16000);
   const [catchUpMonths, setCatchUpMonths] = useState(12);

@@ -87,6 +87,21 @@ Value-investor-bot/
 - ✅ **LLM for explanations only** - Never picks stocks
 - ✅ **Encrypted credentials** - AES-256 encryption
 - ✅ **Historical price catch-up** - Uses actual past prices for backtest
+- ✅ **Quota auto-managed** - Shioaji primary, Yahoo Finance backup for sim mode
+
+## API Quota Management
+
+The dashboard shows real-time Shioaji API quota usage:
+- **Green (0-50%)**: Normal usage, Shioaji active
+- **Yellow (50-90%)**: Moderate usage, monitor closely
+- **Red (>90%)**: High usage, auto-fallback to Yahoo Finance
+
+When Shioaji quota is low (<50MB remaining), the system automatically:
+1. Switches to Yahoo Finance for historical price data
+2. Displays a warning banner on the dashboard
+3. Continues rebalancing without interruption
+
+**Note**: Shioaji accounts without real transaction history have a 500MB/day limit.
 
 ## ⚠️ Risk Warning
 
