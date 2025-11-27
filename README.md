@@ -1,8 +1,8 @@
-# Value Investor Bot — Taiwan Edition (v2.1)
+# Value Investor Bot — Taiwan Edition (v2.2)
 
 🇹🇼 AI-powered automated value investing bot for Taiwan stock market
 
-[![Tests](https://img.shields.io/badge/tests-100%25%20passing-brightgreen)](./backend/src/test)
+[![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)](./run-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-blue)](https://react.dev/)
@@ -24,8 +24,8 @@ ollama serve &
 # 2. Start the application (decrypt key required)
 ./run.sh <decrypt-key>
 
-# 3. Open browser
-open http://localhost:8080
+# Browser opens automatically with loading splash screen
+# Dashboard ready in ~8 seconds
 ```
 
 ## How It Works
@@ -49,12 +49,13 @@ After backtesting, click "Go Live" to start real trading:
 
 | Command | Description |
 |---------|-------------|
-| `./run.sh <key>` | Start all services |
+| `./run.sh <key>` | Start all services (auto-opens browser) |
 | `./run.sh stop` | Stop all services |
 | `./run.sh status` | Show service status |
 | `./run.sh reset` | Reset portfolio data (fresh start) |
 | `./run.sh clean` | Full cleanup (rebuild required) |
 | `./run.sh <key> encrypt` | Encrypt .env credentials |
+| `./run-tests.sh` | Run all tests (Java + TypeScript + Python) |
 
 ## .env Encryption
 
@@ -82,8 +83,10 @@ Value-investor-bot/
 ├── backend/          # Spring Boot 3.3 (Java 21)
 ├── frontend/         # React 18 + TypeScript + Tailwind
 ├── shioaji_bridge/   # FastAPI Python (Shioaji + Yahoo Finance)
+├── contracts/        # Shared API contract definitions (JSON Schema)
 ├── .env              # Encrypted environment variables
-└── run.sh            # Startup script
+├── run.sh            # Startup script (bulletproof, auto-opens browser)
+└── run-tests.sh      # Comprehensive test runner
 ```
 
 ## Safety Features
@@ -94,6 +97,7 @@ Value-investor-bot/
 - ✅ **Encrypted credentials** - AES-256 encryption
 - ✅ **Historical price catch-up** - Uses actual past prices for backtest
 - ✅ **Quota auto-managed** - Shioaji primary, Yahoo Finance backup for sim mode
+- ✅ **Loading splash screen** - Never see blank page on startup
 
 ## API Quota Management
 
@@ -123,78 +127,47 @@ MIT License | Educational purposes only | Not financial advice
 
 ## Testing
 
-The project includes comprehensive test coverage:
+The project includes comprehensive test coverage with **148 tests** across all stacks.
 
-### Backend Tests (Java/Spring Boot)
+### Run All Tests
 ```bash
-cd backend
-jenv exec mvn test
+./run-tests.sh
 ```
 
-**Test Coverage:**
-| Component | Tests | Coverage |
-|-----------|-------|----------|
-| RebalanceService | 8 | 100% |
-| StockScreenerService | 6 | 100% |
-| HistoricalDataService | 5 | 100% |
-| PortfolioService | 4 | 100% |
-| QuotaService | 3 | 100% |
-| Controllers | 12 | 100% |
+### Test Breakdown
 
-### Frontend Tests (React/TypeScript)
+| Stack | Tests | Description |
+|-------|-------|-------------|
+| **Frontend (TypeScript)** | 68 | Unit, contract, integration, component tests |
+| **Backend (Java)** | 9 | Contract tests (DTO serialization) |
+| **Python Bridge** | 71 | Contract, unit, API endpoint tests |
+| **Total** | **148** | All passing ✅ |
+
+### Contract Tests (Most Critical)
+These tests catch field name mismatches between backend and frontend:
+- `contracts/api-contracts.json` - Shared schema definitions
+- Java `ApiContractTest` - Verify DTOs serialize correctly
+- TypeScript `api-contract.test.ts` - Verify field mapping (quantity→shares)
+- Python `test_contracts.py` - Verify response formats
+
+### Individual Test Commands
 ```bash
-cd frontend
-npm test
+# Frontend (TypeScript/Vitest)
+cd frontend && npm test
+
+# Backend (Java/JUnit 5)
+cd backend && mvn test -Dtest=ApiContractTest
+
+# Python (pytest)
+cd shioaji_bridge && pytest tests/ -v
 ```
 
-**Test Coverage:**
-| Component | Tests | Coverage |
-|-----------|-------|----------|
-| Dashboard | 5 | 100% |
-| RebalanceButton | 4 | 100% |
-| QuotaCard | 3 | 100% |
-| GoalRing | 2 | 100% |
-| API Hooks | 6 | 100% |
-
-### Python Bridge Tests
-```bash
-cd shioaji_bridge
-python -m pytest tests/ -v
-```
-
-**Test Coverage:**
-| Module | Tests | Coverage |
-|--------|-------|----------|
-| ShioajiClient | 5 | 100% |
-| YahooFallback | 4 | 100% |
-| API Endpoints | 6 | 100% |
-
-### Integration Tests
-```bash
-# Start all services first
-./run.sh <key>
-
-# Run integration tests
-cd backend
-jenv exec mvn verify -Pintegration-test
-```
-
-**Integration Test Scenarios:**
-- ✅ Full rebalance workflow (deposit → screen → buy → update)
-- ✅ Shioaji → Yahoo Finance fallback
-- ✅ Ollama AI insights generation
-- ✅ Frontend-Backend API contract
-- ✅ Idempotent same-month rebalance
-- ✅ Historical price catch-up
-
-### Running All Tests
-```bash
-# Quick test (unit tests only)
-./run.sh test
-
-# Full test (unit + integration)
-./run.sh test-all
-```
+### Test Coverage Highlights
+- ✅ Null/undefined safety (prevents `toLocaleString()` crashes)
+- ✅ API field name contracts (catches `quantity` vs `shares` mismatches)
+- ✅ Empty array/object handling
+- ✅ Division by zero protection
+- ✅ Negative value formatting
 
 ## Development
 
@@ -207,9 +180,9 @@ jenv exec mvn verify -Pintegration-test
 ### Building
 ```bash
 # Backend
-cd backend && jenv exec mvn clean package -DskipTests
+cd backend && mvn clean package -DskipTests
 
-# Frontend
+# Frontend (outputs to backend/src/main/resources/static)
 cd frontend && npm install && npm run build
 ```
 
@@ -222,8 +195,8 @@ cd frontend && npm install && npm run build
 
 1. Fork the repository
 2. Create a feature branch
-3. Write tests (required: 100% coverage for new code)
-4. Run `./run.sh test-all` to verify
+3. Write tests (required: maintain 100% contract test coverage)
+4. Run `./run-tests.sh` to verify all tests pass
 5. Submit PR
 
-**Important**: All unit and integration tests must pass before committing.
+**Important**: All tests must pass before committing. The CI will reject PRs with failing tests.

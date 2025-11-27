@@ -47,12 +47,13 @@ export function Header() {
 
           {/* Controls */}
           <div className="flex items-center gap-2">
-            {/* Language Toggle */}
+            {/* Language Toggle - shows current language */}
             <button
               onClick={toggleLanguage}
               className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300"
+              title={i18n.language === 'zh' ? 'Switch to English' : '切換至中文'}
             >
-              {i18n.language === 'zh' ? 'EN' : '中文'}
+              {i18n.language === 'zh' ? '中文' : 'EN'}
             </button>
 
             {/* Dark Mode Toggle */}
