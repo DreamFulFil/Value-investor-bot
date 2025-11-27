@@ -69,6 +69,19 @@ class HealthResponse(BaseModel):
     message: str
 
 
+class QuotaResponse(BaseModel):
+    success: bool
+    usedBytes: int = 0
+    limitBytes: int = 500 * 1024 * 1024  # 500MB default
+    remainingBytes: int = 500 * 1024 * 1024
+    usedMB: float = 0
+    limitMB: float = 500
+    remainingMB: float = 500
+    percentageUsed: float = 0
+    fallbackActive: bool = False
+    error: Optional[str] = None
+
+
 def get_client() -> ShioajiClient:
     """Get or create Shioaji client instance"""
     global shioaji_client, config
@@ -137,6 +150,88 @@ async def health_check():
             status="unhealthy",
             connected=False,
             message=str(e)
+        )
+
+
+@app.get("/quota", response_model=QuotaResponse)
+async def get_quota():
+    """
+    Get Shioaji API quota usage
+    Returns current usage, limits, and whether fallback mode is active
+    """
+    try:
+        client = get_client()
+        
+        # Try to get usage from Shioaji API
+        try:
+            usage = client.api.usage()
+            
+            # Extract bytes - Shioaji returns bytes used/remaining
+            used_bytes = 0
+            limit_bytes = 500 * 1024 * 1024  # 500MB default
+            remaining_bytes = limit_bytes
+            
+            if hasattr(usage, 'bytes'):
+                used_bytes = usage.bytes
+            elif hasattr(usage, 'used_bytes'):
+                used_bytes = usage.used_bytes
+            elif isinstance(usage, dict):
+                used_bytes = usage.get('bytes', 0) or usage.get('used_bytes', 0)
+            
+            if hasattr(usage, 'remaining_bytes'):
+                remaining_bytes = usage.remaining_bytes
+            elif isinstance(usage, dict):
+                remaining_bytes = usage.get('remaining_bytes', limit_bytes - used_bytes)
+            else:
+                remaining_bytes = limit_bytes - used_bytes
+            
+            if hasattr(usage, 'limit_bytes'):
+                limit_bytes = usage.limit_bytes
+            elif isinstance(usage, dict):
+                limit_bytes = usage.get('limit_bytes', 500 * 1024 * 1024)
+            
+            used_mb = used_bytes / (1024 * 1024)
+            limit_mb = limit_bytes / (1024 * 1024)
+            remaining_mb = remaining_bytes / (1024 * 1024)
+            percentage_used = (used_bytes / limit_bytes * 100) if limit_bytes > 0 else 0
+            
+            # Fallback active if remaining < 50MB
+            fallback_active = remaining_bytes < 50 * 1024 * 1024
+            
+            return QuotaResponse(
+                success=True,
+                usedBytes=used_bytes,
+                limitBytes=limit_bytes,
+                remainingBytes=remaining_bytes,
+                usedMB=round(used_mb, 2),
+                limitMB=round(limit_mb, 2),
+                remainingMB=round(remaining_mb, 2),
+                percentageUsed=round(percentage_used, 2),
+                fallbackActive=fallback_active
+            )
+            
+        except Exception as usage_error:
+            logger.warning(f"Could not get Shioaji usage: {usage_error}")
+            # Return default values - assume quota is available
+            return QuotaResponse(
+                success=True,
+                usedBytes=0,
+                limitBytes=500 * 1024 * 1024,
+                remainingBytes=500 * 1024 * 1024,
+                usedMB=0,
+                limitMB=500,
+                remainingMB=500,
+                percentageUsed=0,
+                fallbackActive=False,
+                error=f"Could not fetch usage: {str(usage_error)}"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error getting quota: {e}")
+        return QuotaResponse(
+            success=False,
+            fallbackActive=True,
+            error=str(e)
         )
 
 

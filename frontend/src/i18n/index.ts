@@ -39,6 +39,11 @@ const resources = {
       error: 'Error',
       goLive: 'Go Live',
       alreadyRebalancedThisMonth: 'Already rebalanced this month. Next rebalance available next month.',
+      apiQuota: 'API Quota',
+      remaining: 'remaining',
+      active: 'active',
+      quotaLowFallback: 'Shioaji quota low — using Yahoo Finance backup for market data.',
+      quotaLowRebalance: 'API quota critically low. Consider waiting until tomorrow for rebalance.',
     },
   },
   zh: {
@@ -78,6 +83,11 @@ const resources = {
       error: '錯誤',
       goLive: '開始真實投資',
       alreadyRebalancedThisMonth: '本月已執行再平衡。下次再平衡將於下個月可用。',
+      apiQuota: 'API 配額',
+      remaining: '剩餘',
+      active: '啟用中',
+      quotaLowFallback: 'Shioaji 配額不足 — 使用 Yahoo Finance 備援取得市場資料。',
+      quotaLowRebalance: 'API 配額嚴重不足。建議等到明天再執行再平衡。',
     },
   },
 };
