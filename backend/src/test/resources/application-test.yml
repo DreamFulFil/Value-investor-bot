@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  h2:
+    console:
+      enabled: false
+
+app:
+  investment:
+    monthly-amount-twd: 16000
+    target-weekly-twd: 1600
+  trading:
+    mode: SIMULATION
+  shioaji:
+    api-url: http://localhost:8888
+  ollama:
+    base-url: http://localhost:11434
+    model: llama3.1:8b-instruct-q5_K_M
+
+logging:
+  level:
+    root: WARN
+    com.valueinvestor: INFO

@@ -2,6 +2,8 @@ package com.valueinvestor.service;
 
 import com.valueinvestor.model.entity.StockFundamentals;
 import com.valueinvestor.repository.StockFundamentalsRepository;
+import com.valueinvestor.repository.StockPriceHistoryRepository;
+import com.valueinvestor.repository.StockUniverseRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +26,12 @@ class MarketDataServiceTest {
 
     @Mock
     private StockFundamentalsRepository fundamentalsRepository;
+
+    @Mock
+    private StockPriceHistoryRepository priceHistoryRepository;
+
+    @Mock
+    private StockUniverseRepository stockUniverseRepository;
 
     @InjectMocks
     private MarketDataService marketDataService;
@@ -129,6 +137,9 @@ class MarketDataServiceTest {
 
     @Test
     void should_returnZero_when_quoteNotFound() {
+        // Given
+        when(priceHistoryRepository.findLatestPriceForSymbol("INVALID")).thenReturn(Optional.empty());
+        
         // When
         BigDecimal quote = marketDataService.getQuote("INVALID");
 
@@ -147,6 +158,9 @@ class MarketDataServiceTest {
 
     @Test
     void should_returnFalse_when_invalidSymbol() {
+        // Given
+        when(priceHistoryRepository.existsBySymbol("INVALID_SYMBOL_XYZ")).thenReturn(false);
+        
         // When
         boolean isValid = marketDataService.isValidSymbol("INVALID_SYMBOL_XYZ");
 

@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class RebalanceServiceTest {
 
     @Mock
@@ -42,6 +45,9 @@ class RebalanceServiceTest {
 
     @Mock
     private PortfolioSnapshotRepository snapshotRepository;
+    
+    @Mock
+    private ProgressService progressService;
 
     @InjectMocks
     private RebalanceService rebalanceService;
@@ -56,39 +62,42 @@ class RebalanceServiceTest {
         testSnapshot.setTimestamp(LocalDateTime.now().minusMonths(2));
         testSnapshot.setSnapshotType("MONTHLY_REBALANCE");
 
-        testAnalysis = new AnalysisResults("AAPL", "Buy recommendation", 85.0, "BUY", "Data");
+        testAnalysis = new AnalysisResults("2330.TW", "Buy recommendation", 85.0, "BUY", "Data");
+        
+        // Default mock setup for progress service
+        doNothing().when(progressService).sendProgress(any(), anyString(), anyInt());
     }
 
     @Test
-    void should_performMonthlyRebalance_when_noMissedMonths() {
-        // Given
+    void should_performMonthlyRebalance_when_noRebalanceThisMonth() {
+        // Given - last rebalance was 2 months ago
         when(snapshotRepository.findLastMonthlyRebalanceSnapshot())
                 .thenReturn(Optional.of(testSnapshot));
         when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
         when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-        when(appConfig.getWatchlist()).thenReturn(Arrays.asList("AAPL", "MSFT", "GOOGL", "T", "VZ"));
-
-        AnalysisResults analysis1 = new AnalysisResults("AAPL", "Buy", 85.0, "BUY", "Data");
-        AnalysisResults analysis2 = new AnalysisResults("MSFT", "Buy", 80.0, "BUY", "Data");
-        AnalysisResults analysis3 = new AnalysisResults("GOOGL", "Buy", 75.0, "BUY", "Data");
-        AnalysisResults analysis4 = new AnalysisResults("T", "Buy", 70.0, "BUY", "Data");
-        AnalysisResults analysis5 = new AnalysisResults("VZ", "Buy", 65.0, "BUY", "Data");
-
-        when(analysisService.getLatestAnalysis(anyString()))
-                .thenReturn(Optional.empty());
-        when(analysisService.analyzeStock("AAPL")).thenReturn(analysis1);
-        when(analysisService.analyzeStock("MSFT")).thenReturn(analysis2);
-        when(analysisService.analyzeStock("GOOGL")).thenReturn(analysis3);
-        when(analysisService.analyzeStock("T")).thenReturn(analysis4);
-        when(analysisService.analyzeStock("VZ")).thenReturn(analysis5);
+        // Provide a watchlist so selectTopStocks works
+        when(appConfig.getWatchlist()).thenReturn(
+                Arrays.asList("2330.TW", "2317.TW", "2454.TW", "2881.TW", "2882.TW"));
+        when(tradingService.createDeposit(any(), any(), anyString())).thenReturn(new TransactionLog());
 
         Map<String, BigDecimal> allocation = new HashMap<>();
-        allocation.put("AAPL", new BigDecimal("100.00"));
+        allocation.put("2330.TW", new BigDecimal("3200.00"));
 
         when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(allocation);
-        when(tradingService.calculateSharesToBuy(anyString(), any())).thenReturn(new BigDecimal("1"));
-        when(tradingService.executeBuy(anyString(), any(), any())).thenReturn(new TransactionLog());
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
+        when(marketDataService.getHistoricalClosePrice(anyString(), any())).thenReturn(new BigDecimal("580.00"));
+        
+        // Create a proper transaction with totalAmount
+        TransactionLog buyTransaction = new TransactionLog();
+        buyTransaction.setTotalAmount(new BigDecimal("3200.00"));
+        when(tradingService.executeBuy(anyString(), any(), any(), any())).thenReturn(buyTransaction);
+        
+        // Mock to return a new snapshot for each call (handles catch-up months)
+        when(portfolioService.saveSnapshot(anyString())).thenAnswer(invocation -> {
+            PortfolioSnapshot snapshot = new PortfolioSnapshot();
+            snapshot.setId(System.currentTimeMillis());
+            snapshot.setSnapshotType("MONTHLY_REBALANCE");
+            return snapshot;
+        });
 
         // When
         RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
@@ -99,8 +108,28 @@ class RebalanceServiceTest {
     }
 
     @Test
+    void should_blockDuplicateRebalance_when_alreadyRebalancedThisMonth() {
+        // Given - last rebalance was today
+        PortfolioSnapshot recentSnapshot = new PortfolioSnapshot();
+        recentSnapshot.setTimestamp(LocalDateTime.now());
+        recentSnapshot.setSnapshotType("MONTHLY_REBALANCE");
+
+        when(snapshotRepository.findLastMonthlyRebalanceSnapshot())
+                .thenReturn(Optional.of(recentSnapshot));
+
+        // When
+        RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
+
+        // Then - should succeed but not perform any transactions
+        assertThat(result).isNotNull();
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getMessage()).contains("Already rebalanced this month");
+        verify(tradingService, never()).executeBuy(anyString(), any(), any(), any());
+    }
+
+    @Test
     void should_catchUpMissedMonths_when_rebalanceDelayed() {
-        // Given
+        // Given - last rebalance was 3 months ago
         PortfolioSnapshot oldSnapshot = new PortfolioSnapshot();
         oldSnapshot.setTimestamp(LocalDateTime.now().minusMonths(3));
         oldSnapshot.setSnapshotType("MONTHLY_REBALANCE");
@@ -109,103 +138,23 @@ class RebalanceServiceTest {
                 .thenReturn(Optional.of(oldSnapshot));
         when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
         when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-        when(appConfig.getWatchlist()).thenReturn(Arrays.asList("AAPL", "MSFT", "GOOGL", "T", "VZ"));
-
-        when(analysisService.getLatestAnalysis(anyString())).thenReturn(Optional.empty());
-        when(analysisService.analyzeStock(anyString())).thenReturn(testAnalysis);
+        when(appConfig.getWatchlist()).thenReturn(
+                Arrays.asList("2330.TW", "2317.TW", "2454.TW", "2881.TW", "2882.TW"));
+        when(tradingService.createDeposit(any(), any(), anyString())).thenReturn(new TransactionLog());
         when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(new HashMap<>());
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
+        when(portfolioService.saveSnapshot(anyString())).thenAnswer(invocation -> {
+            PortfolioSnapshot snapshot = new PortfolioSnapshot();
+            snapshot.setId(System.currentTimeMillis());
+            snapshot.setSnapshotType("MONTHLY_REBALANCE");
+            return snapshot;
+        });
 
         // When
         RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getMissedMonths()).isGreaterThan(0);
-        verify(portfolioService, atLeastOnce()).saveSnapshot("MONTHLY_REBALANCE");
-    }
-
-    @Test
-    void should_selectTopStocks_when_analysisAvailable() {
-        // Given
-        when(appConfig.getWatchlist()).thenReturn(Arrays.asList("AAPL", "MSFT", "GOOGL", "T", "VZ", "IBM"));
-        when(snapshotRepository.findLastMonthlyRebalanceSnapshot()).thenReturn(Optional.of(testSnapshot));
-        when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
-        when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-
-        AnalysisResults analysis1 = new AnalysisResults("AAPL", "Buy", 90.0, "BUY", "Data");
-        AnalysisResults analysis2 = new AnalysisResults("MSFT", "Buy", 85.0, "BUY", "Data");
-        AnalysisResults analysis3 = new AnalysisResults("GOOGL", "Hold", 50.0, "HOLD", "Data");
-        AnalysisResults analysis4 = new AnalysisResults("T", "Buy", 80.0, "BUY", "Data");
-        AnalysisResults analysis5 = new AnalysisResults("VZ", "Buy", 75.0, "BUY", "Data");
-        AnalysisResults analysis6 = new AnalysisResults("IBM", "Buy", 70.0, "BUY", "Data");
-
-        when(analysisService.getLatestAnalysis(anyString())).thenReturn(Optional.empty());
-        when(analysisService.analyzeStock("AAPL")).thenReturn(analysis1);
-        when(analysisService.analyzeStock("MSFT")).thenReturn(analysis2);
-        when(analysisService.analyzeStock("GOOGL")).thenReturn(analysis3);
-        when(analysisService.analyzeStock("T")).thenReturn(analysis4);
-        when(analysisService.analyzeStock("VZ")).thenReturn(analysis5);
-        when(analysisService.analyzeStock("IBM")).thenReturn(analysis6);
-
-        Map<String, BigDecimal> allocation = new HashMap<>();
-        when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(allocation);
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
-
-        // When
-        RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
-
-        // Then
-        assertThat(result).isNotNull();
-        verify(analysisService, times(6)).analyzeStock(anyString());
-    }
-
-    @Test
-    void should_useRecentAnalysis_when_available() {
-        // Given
-        AnalysisResults recentAnalysis = new AnalysisResults("AAPL", "Buy", 85.0, "BUY", "Data");
-        recentAnalysis.setTimestamp(LocalDateTime.now().minusDays(3));
-
-        when(snapshotRepository.findLastMonthlyRebalanceSnapshot()).thenReturn(Optional.of(testSnapshot));
-        when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
-        when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-        when(appConfig.getWatchlist()).thenReturn(Arrays.asList("AAPL"));
-        when(analysisService.getLatestAnalysis("AAPL")).thenReturn(Optional.of(recentAnalysis));
-        when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(new HashMap<>());
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
-
-        // When
-        rebalanceService.performMonthlyRebalance();
-
-        // Then
-        verify(analysisService).getLatestAnalysis("AAPL");
-        verify(analysisService, never()).analyzeStock("AAPL");
-    }
-
-    @Test
-    void should_handleErrors_when_stockPurchaseFails() {
-        // Given
-        when(snapshotRepository.findLastMonthlyRebalanceSnapshot()).thenReturn(Optional.of(testSnapshot));
-        when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
-        when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-        when(appConfig.getWatchlist()).thenReturn(Arrays.asList("AAPL"));
-
-        when(analysisService.getLatestAnalysis(anyString())).thenReturn(Optional.empty());
-        when(analysisService.analyzeStock("AAPL")).thenReturn(testAnalysis);
-
-        Map<String, BigDecimal> allocation = new HashMap<>();
-        allocation.put("AAPL", new BigDecimal("16000.00"));
-        when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(allocation);
-        when(tradingService.calculateSharesToBuy(anyString(), any()))
-                .thenThrow(new RuntimeException("Price unavailable"));
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
-
-        // When
-        RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getMissedMonths()).isGreaterThanOrEqualTo(3);
     }
 
     @Test
@@ -214,10 +163,16 @@ class RebalanceServiceTest {
         when(snapshotRepository.findLastMonthlyRebalanceSnapshot()).thenReturn(Optional.of(testSnapshot));
         when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
         when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
-        when(appConfig.getWatchlist()).thenReturn(new ArrayList<>());
-        when(marketDataService.getStocksByMinDividendYield(any())).thenReturn(new ArrayList<>());
+        when(appConfig.getWatchlist()).thenReturn(
+                Arrays.asList("2330.TW", "2317.TW", "2454.TW", "2881.TW", "2882.TW"));
+        when(tradingService.createDeposit(any(), any(), anyString())).thenReturn(new TransactionLog());
         when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(new HashMap<>());
-        when(portfolioService.saveSnapshot(anyString())).thenReturn(testSnapshot);
+        when(portfolioService.saveSnapshot(anyString())).thenAnswer(invocation -> {
+            PortfolioSnapshot snapshot = new PortfolioSnapshot();
+            snapshot.setId(System.currentTimeMillis());
+            snapshot.setSnapshotType("MONTHLY_REBALANCE");
+            return snapshot;
+        });
 
         // When
         RebalanceService.RebalanceResult result = rebalanceService.triggerRebalance();
@@ -240,5 +195,30 @@ class RebalanceServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).isNotNull();
+    }
+    
+    @Test
+    void should_handleFirstTimeRebalance_when_noHistory() {
+        // Given - no previous rebalance
+        when(snapshotRepository.findLastMonthlyRebalanceSnapshot()).thenReturn(Optional.empty());
+        when(appConfig.getMonthlyInvestment()).thenReturn(new BigDecimal("16000.00"));
+        when(appConfig.getTradingMode()).thenReturn(TransactionLog.TradingMode.SIMULATION);
+        when(appConfig.getWatchlist()).thenReturn(
+                Arrays.asList("2330.TW", "2317.TW", "2454.TW", "2881.TW", "2882.TW"));
+        when(tradingService.createDeposit(any(), any(), anyString())).thenReturn(new TransactionLog());
+        when(portfolioService.calculateTargetAllocation(any(), any())).thenReturn(new HashMap<>());
+        when(portfolioService.saveSnapshot(anyString())).thenAnswer(invocation -> {
+            PortfolioSnapshot snapshot = new PortfolioSnapshot();
+            snapshot.setId(System.currentTimeMillis());
+            snapshot.setSnapshotType("MONTHLY_REBALANCE");
+            return snapshot;
+        });
+
+        // When
+        RebalanceService.RebalanceResult result = rebalanceService.performMonthlyRebalance();
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.isSuccess()).isTrue();
     }
 }

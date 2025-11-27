@@ -108,7 +108,8 @@ class TradingServiceTest {
     void should_executeSell_when_simulationMode() {
         // Given
         when(marketDataService.getQuote("AAPL")).thenReturn(new BigDecimal("160.00"));
-        when(transactionLogRepository.save(any(TransactionLog.class))).thenReturn(testTransaction);
+        // Return the argument passed to save so we get the actual SELL transaction
+        when(transactionLogRepository.save(any(TransactionLog.class))).thenAnswer(i -> i.getArgument(0));
         when(positionHistoryRepository.findLatestPositionBySymbol("AAPL"))
                 .thenReturn(Optional.of(testPosition));
         when(positionHistoryRepository.save(any(PositionHistory.class))).thenReturn(testPosition);

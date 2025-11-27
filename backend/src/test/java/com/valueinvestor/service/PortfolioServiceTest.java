@@ -136,11 +136,11 @@ class PortfolioServiceTest {
         // When
         Map<String, BigDecimal> allocation = portfolioService.calculateTargetAllocation(monthlyInvestment, selectedSymbols);
 
-        // Then
+        // Then - 16000 / 3 stocks = 5333.33 per stock
         assertThat(allocation).hasSize(3);
-        assertThat(allocation.get("AAPL")).isEqualByComparingTo("166.67");
-        assertThat(allocation.get("MSFT")).isEqualByComparingTo("166.67");
-        assertThat(allocation.get("GOOGL")).isEqualByComparingTo("166.67");
+        assertThat(allocation.get("AAPL")).isEqualByComparingTo("5333.33");
+        assertThat(allocation.get("MSFT")).isEqualByComparingTo("5333.33");
+        assertThat(allocation.get("GOOGL")).isEqualByComparingTo("5333.33");
     }
 
     @Test

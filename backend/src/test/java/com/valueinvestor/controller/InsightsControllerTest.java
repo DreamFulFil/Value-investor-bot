@@ -2,9 +2,12 @@ package com.valueinvestor.controller;
 
 import com.valueinvestor.model.entity.InsightsHistory;
 import com.valueinvestor.service.InsightsService;
+import com.valueinvestor.service.LearningService;
+import com.valueinvestor.service.PortfolioReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,10 +19,11 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(InsightsController.class)
+@ActiveProfiles("test")
 class InsightsControllerTest {
 
     @Autowired
@@ -27,6 +31,12 @@ class InsightsControllerTest {
 
     @MockBean
     private InsightsService insightsService;
+    
+    @MockBean
+    private PortfolioReportService portfolioReportService;
+    
+    @MockBean
+    private LearningService learningService;
 
     @Test
     void should_getCurrentInsights_when_requested() throws Exception {
@@ -36,7 +46,7 @@ class InsightsControllerTest {
         // When/Then
         mockMvc.perform(get("/api/insights/current"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("# Monthly Insights"));
+                .andExpect(jsonPath("$.content").value("# Monthly Insights"));
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.valueinvestor.service.AnalysisService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AnalysisController.class)
+@ActiveProfiles("test")
 class AnalysisControllerTest {
 
     @Autowired
@@ -47,8 +49,8 @@ class AnalysisControllerTest {
         AnalysisResults analysis = new AnalysisResults("AAPL", "Buy recommendation", 85.0, "BUY", "Data");
         when(analysisService.getLatestAnalysis(anyString())).thenReturn(Optional.of(analysis));
 
-        // When/Then
-        mockMvc.perform(get("/api/analysis/latest/AAPL"))
+        // When/Then - Endpoint is /api/analysis/stock/{symbol}
+        mockMvc.perform(get("/api/analysis/stock/AAPL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.symbol").value("AAPL"));
     }

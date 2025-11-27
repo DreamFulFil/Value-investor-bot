@@ -61,7 +61,7 @@ class LearningServiceTest {
         // Given
         when(learningTipRepository.findByTipDate(any(LocalDate.class))).thenReturn(Optional.empty());
         when(learningTipRepository.existsByTipDate(any(LocalDate.class))).thenReturn(false);
-        when(ollamaClient.generateLearningTip(anyString())).thenReturn("Focus on dividend growth");
+        when(ollamaClient.generateLearningTip(anyString(), anyString())).thenReturn("Focus on dividend growth");
         when(learningTipRepository.save(any(DailyLearningTip.class))).thenReturn(testTip);
 
         // When
@@ -69,7 +69,7 @@ class LearningServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        verify(ollamaClient).generateLearningTip(anyString());
+        verify(ollamaClient, atLeastOnce()).generateLearningTip(anyString(), anyString());
         verify(learningTipRepository).save(any(DailyLearningTip.class));
     }
 
@@ -176,7 +176,7 @@ class LearningServiceTest {
     void should_useFallbackTip_when_ollamaFails() throws Exception {
         // Given
         when(learningTipRepository.existsByTipDate(any())).thenReturn(false);
-        when(ollamaClient.generateLearningTip(anyString())).thenThrow(new RuntimeException("Ollama error"));
+        when(ollamaClient.generateLearningTip(anyString(), anyString())).thenThrow(new RuntimeException("Ollama error"));
         when(learningTipRepository.save(any(DailyLearningTip.class))).thenReturn(testTip);
 
         // When
