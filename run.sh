@@ -1,7 +1,6 @@
 #!/bin/bash
 # Value Investor Bot - Taiwan Edition
 # Bulletproof startup script - perfect dashboard every time
-set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -28,7 +27,7 @@ stop_services() {
     if [ -f "$SHIOAJI_PID_FILE" ]; then
         PID=$(cat "$SHIOAJI_PID_FILE")
         if kill -0 "$PID" 2>/dev/null; then
-            kill "$PID" 2>/dev/null
+            kill "$PID" 2>/dev/null || true
             sleep 1
             kill -9 "$PID" 2>/dev/null || true
         fi
@@ -40,7 +39,7 @@ stop_services() {
     if [ -f "$BACKEND_PID_FILE" ]; then
         PID=$(cat "$BACKEND_PID_FILE")
         if kill -0 "$PID" 2>/dev/null; then
-            kill "$PID" 2>/dev/null
+            kill "$PID" 2>/dev/null || true
             sleep 1
             kill -9 "$PID" 2>/dev/null || true
         fi
@@ -61,7 +60,7 @@ show_status() {
     if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
         echo -e "  Ollama:      ${GREEN}✓ Running${NC}"
     else
-        echo -e "  Ollama:      ${YELLOW}○ Not running (optional)${NC}"
+        echo -e "  Ollama:      ${YELLOW}○ Not running - optional${NC}"
     fi
     if curl -s http://127.0.0.1:8888/health >/dev/null 2>&1; then
         echo -e "  Shioaji API: ${GREEN}✓ Running${NC}"
@@ -88,7 +87,7 @@ clean_env() {
 }
 
 reset_portfolio() {
-    echo -e "${BLUE}Resetting portfolio data (keeping stock universe)...${NC}"
+    echo -e "${BLUE}Resetting portfolio data...${NC}"
     rm -f backend/database.db backend/*.db
     echo -e "${GREEN}Portfolio reset. Stocks will be re-fetched on next start.${NC}"
 }
@@ -115,11 +114,11 @@ show_help() {
     echo "Usage: ./run.sh <decrypt_key> [command]"
     echo ""
     echo "Commands:"
-    echo "  (default)   Start all services"
+    echo "  [default]   Start all services"
     echo "  stop        Stop all services"
     echo "  status      Show service status"
     echo "  clean       Stop services and reset everything"
-    echo "  reset       Reset portfolio data only (fresh start)"
+    echo "  reset       Reset portfolio data only"
     echo "  encrypt     Encrypt .env credentials"
     echo "  help        Show this help"
     echo ""
@@ -147,7 +146,7 @@ frontend_needs_rebuild() {
     # Check if source files are newer than build
     if [ -f "$BUILD_TIMESTAMP_FILE" ]; then
         LAST_BUILD=$(cat "$BUILD_TIMESTAMP_FILE")
-        NEWEST_SRC=$(find frontend/src -type f -name "*.tsx" -o -name "*.ts" -o -name "*.css" 2>/dev/null | xargs stat -f "%m" 2>/dev/null | sort -rn | head -1)
+        NEWEST_SRC=$(find frontend/src -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.css" \) 2>/dev/null | xargs stat -f "%m" 2>/dev/null | sort -rn | head -1)
         if [ -n "$NEWEST_SRC" ] && [ "$NEWEST_SRC" -gt "$LAST_BUILD" ]; then
             return 0
         fi
@@ -172,8 +171,7 @@ build_frontend() {
     
     cd "$SCRIPT_DIR"
     
-    # Copy to static resources (Vite already outputs to backend/src/main/resources/static via config)
-    # But let's ensure it's there
+    # Copy to static resources if Vite didn't output there
     STATIC="$SCRIPT_DIR/backend/src/main/resources/static"
     if [ -d "frontend/dist" ] && [ ! -f "$STATIC/index.html" ]; then
         mkdir -p "$STATIC"
@@ -215,6 +213,15 @@ wait_for_backend() {
     return 1
 }
 
+# Trap for cleanup - defined early
+cleanup() {
+    echo ""
+    echo -e "${BLUE}Shutting down gracefully...${NC}"
+    cd "$SCRIPT_DIR"
+    stop_services
+    exit 0
+}
+
 # Handle commands
 case "$COMMAND" in
     stop) stop_services; exit 0 ;;
@@ -233,6 +240,9 @@ if [ -z "$DECRYPT_KEY" ]; then
     exit 1
 fi
 
+# Set trap for Ctrl+C
+trap cleanup INT TERM
+
 # Cleanup before starting
 stop_services 2>/dev/null
 
@@ -247,10 +257,10 @@ echo -e "${BLUE}[1/5] Checking Ollama...${NC}"
 if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓ Ollama is running${NC}"
 else
-    echo -e "  ${YELLOW}○ Ollama not running (AI insights disabled)${NC}"
+    echo -e "  ${YELLOW}○ Ollama not running - AI insights disabled${NC}"
 fi
 
-# Step 2: Build frontend if needed (smart rebuild)
+# Step 2: Build frontend if needed
 echo -e "${BLUE}[2/5] Checking frontend...${NC}"
 if frontend_needs_rebuild; then
     build_frontend
@@ -284,7 +294,7 @@ if [ -d "shioaji_bridge" ]; then
     done
     
     if ! curl -s http://127.0.0.1:8888/health >/dev/null 2>&1; then
-        echo -e "\n  ${YELLOW}○ Shioaji API slow (Yahoo Finance fallback active)${NC}"
+        echo -e "\n  ${YELLOW}○ Shioaji API slow - Yahoo Finance fallback active${NC}"
     fi
 fi
 
@@ -321,15 +331,6 @@ echo -e "${GREEN}║  Dashboard: http://localhost:8080      ║${NC}"
 echo -e "${GREEN}║  Press Ctrl+C to stop                  ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo ""
-
-# Trap to cleanup on exit
-cleanup() {
-    echo ""
-    echo -e "${BLUE}Shutting down gracefully...${NC}"
-    cd "$SCRIPT_DIR"
-    stop_services
-}
-trap cleanup EXIT INT TERM
 
 # Tail backend logs in foreground (keeps script running)
 tail -f "$SCRIPT_DIR/.backend.log"
