@@ -60,12 +60,28 @@ export interface QuotaStatus {
   fallbackActive: boolean;
 }
 
+export interface AppConfig {
+  tradingMode: 'SIMULATION' | 'LIVE';
+  monthlyInvestment: number;
+  targetWeeklyDividend: number;
+  currency: string;
+}
+
+export interface ProgressEvent {
+  type: 'deposit' | 'screening' | 'fetching_prices' | 'buying' | 'generating_insights' | 'complete' | 'error';
+  message: string;
+  percentage: number;
+  timestamp: number;
+}
+
 // Backend endpoints:
 // /api/portfolio/current - Get current portfolio
 // /api/portfolio/history - Get portfolio snapshots
 // /api/insights/current - Get current insight
 // /api/insights/history - Get insight history
 // /api/trading/rebalance - Trigger rebalance
+// /api/trading/rebalance/progress - SSE for progress updates
+// /api/config - Get app config
 
 export const fetchPortfolioSummary = async (): Promise<PortfolioSummary> => {
   try {
@@ -133,7 +149,7 @@ export const runMonthlyRebalance = async (): Promise<RebalanceResult> => {
   const { data } = await api.post('/trading/rebalance');
   return {
     success: data.success,
-    message: data.errorMessage || 'Rebalance completed',
+    message: data.message || data.errorMessage || 'Rebalance completed',
     tradesExecuted: data.totalTransactions || 0,
     newPositions: data.monthlyResults?.[0]?.stocksPurchased || 0,
     timestamp: data.endTime,
@@ -155,6 +171,20 @@ export const fetchQuotaStatus = async (): Promise<QuotaStatus> => {
   }
 };
 
+export const fetchAppConfig = async (): Promise<AppConfig> => {
+  try {
+    const { data } = await api.get('/config');
+    return {
+      tradingMode: data.tradingMode || 'SIMULATION',
+      monthlyInvestment: data.monthlyInvestment || 16000,
+      targetWeeklyDividend: data.targetWeeklyDividend || 1600,
+      currency: data.currency || 'TWD',
+    };
+  } catch {
+    return { tradingMode: 'SIMULATION', monthlyInvestment: 16000, targetWeeklyDividend: 1600, currency: 'TWD' };
+  }
+};
+
 export const checkHealth = async (): Promise<boolean> => {
   try {
     await api.get('/health');
@@ -162,6 +192,11 @@ export const checkHealth = async (): Promise<boolean> => {
   } catch {
     return false;
   }
+};
+
+// SSE helper for progress updates
+export const createProgressEventSource = (): EventSource => {
+  return new EventSource('/api/trading/rebalance/progress');
 };
 
 export default api;

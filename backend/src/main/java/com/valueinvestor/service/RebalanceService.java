@@ -43,6 +43,9 @@ public class RebalanceService {
 
     @Autowired
     private PortfolioSnapshotRepository snapshotRepository;
+    
+    @Autowired
+    private ProgressService progressService;
 
     /**
      * Perform monthly rebalance with catch-up logic
@@ -119,7 +122,7 @@ public class RebalanceService {
     }
 
     /**
-     * Execute rebalance for a specific month
+     * Execute rebalance for a specific month with real-time progress updates
      */
     private MonthlyRebalanceResult executeMonthlyRebalance(LocalDate rebalanceDate) {
         MonthlyRebalanceResult result = new MonthlyRebalanceResult();
@@ -130,8 +133,10 @@ public class RebalanceService {
 
         logger.info("Monthly investment: NT${}, Mode: {}", monthlyInvestment, mode);
         
-        // Step 0: Auto-deposit the monthly investment amount (simulation/backtest mode)
-        // This creates cash that can be used to buy stocks
+        // Step 0: Auto-deposit the monthly investment amount
+        progressService.sendProgress(ProgressService.ProgressType.DEPOSIT, 
+            String.format("Adding NT$%,.0f monthly deposit...", monthlyInvestment), 10);
+        
         if (monthlyInvestment.compareTo(BigDecimal.ZERO) > 0) {
             TransactionLog deposit = tradingService.createDeposit(monthlyInvestment, mode, 
                 "Monthly investment deposit for " + rebalanceDate);
@@ -139,11 +144,13 @@ public class RebalanceService {
         }
 
         // Step 1: Select top 5 stocks
+        progressService.sendProgress(ProgressService.ProgressType.SCREENING, 
+            "Screening stocks for best dividend yield...", 25);
+        
         List<String> selectedStocks = selectTopStocks();
 
         if (selectedStocks.isEmpty()) {
             logger.warn("No stocks selected for rebalance - using top stocks from universe");
-            // Fallback: just pick first 5 active stocks
             selectedStocks = marketDataService.getActiveStockSymbols()
                     .stream()
                     .limit(TARGET_POSITIONS)
@@ -155,17 +162,29 @@ public class RebalanceService {
         }
 
         result.setSelectedStocks(selectedStocks);
+        
+        progressService.sendProgress(ProgressService.ProgressType.SCREENING, 
+            String.format("Selected %d stocks: %s", selectedStocks.size(), String.join(", ", selectedStocks)), 35);
 
         // Step 2: Calculate allocation
         Map<String, BigDecimal> allocation = portfolioService.calculateTargetAllocation(
                 monthlyInvestment, selectedStocks);
 
-        // Step 3: Execute buys using HISTORICAL prices for catch-up
+        // Step 3: Fetch prices
+        progressService.sendProgress(ProgressService.ProgressType.FETCHING_PRICES, 
+            "Fetching latest prices...", 45);
+
+        // Step 4: Execute buys using HISTORICAL prices for catch-up
         List<TransactionLog> transactions = new ArrayList<>();
+        int stockIndex = 0;
+        int totalStocks = allocation.size();
 
         for (Map.Entry<String, BigDecimal> entry : allocation.entrySet()) {
             String symbol = entry.getKey();
             BigDecimal amount = entry.getValue();
+            stockIndex++;
+            
+            int progressPct = 50 + (stockIndex * 40 / totalStocks);
 
             try {
                 // Use historical price for catch-up rebalancing (not current price)
@@ -181,6 +200,14 @@ public class RebalanceService {
                 BigDecimal shares = amount.divide(historicalPrice, 8, RoundingMode.DOWN);
 
                 if (shares.compareTo(BigDecimal.ZERO) > 0) {
+                    // Send progress update
+                    double allocationPct = amount.divide(monthlyInvestment, 4, RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")).doubleValue();
+                    progressService.sendProgress(ProgressService.ProgressType.BUYING, 
+                        String.format("Buying %s at NT$%.2f (%.1f%% of allocation)", 
+                            symbol, historicalPrice, allocationPct), 
+                        progressPct);
+                    
                     // Execute buy with historical price
                     TransactionLog transaction = tradingService.executeBuy(symbol, shares, mode, historicalPrice);
                     transactions.add(transaction);
@@ -203,7 +230,10 @@ public class RebalanceService {
                 .map(TransactionLog::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
 
-        // Step 4: Save snapshot
+        // Step 5: Save snapshot
+        progressService.sendProgress(ProgressService.ProgressType.GENERATING_INSIGHTS, 
+            "Saving portfolio snapshot...", 95);
+        
         PortfolioSnapshot snapshot = portfolioService.saveSnapshot("MONTHLY_REBALANCE");
         result.setSnapshotId(snapshot.getId());
 

@@ -1,5 +1,6 @@
 package com.valueinvestor.controller;
 
+import com.valueinvestor.config.AppConfig;
 import com.valueinvestor.service.ShioajiDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,9 @@ public class HealthController {
 
     @Autowired
     private ShioajiDataService shioajiDataService;
+    
+    @Autowired
+    private AppConfig appConfig;
 
     @GetMapping("/health")
     public Map<String, Object> health() {
@@ -27,6 +31,7 @@ public class HealthController {
         response.put("timestamp", LocalDateTime.now());
         response.put("service", "Value Investor Bot");
         response.put("version", "0.0.1");
+        response.put("tradingMode", appConfig.getTradingMode().name());
         return response;
     }
 
@@ -41,6 +46,16 @@ public class HealthController {
         response.put("percentageUsed", quota.getPercentageUsed());
         response.put("fallbackActive", quota.isFallbackActive());
         response.put("timestamp", LocalDateTime.now());
+        return response;
+    }
+    
+    @GetMapping("/config")
+    public Map<String, Object> getConfig() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("tradingMode", appConfig.getTradingMode().name());
+        response.put("monthlyInvestment", appConfig.getMonthlyInvestment());
+        response.put("targetWeeklyDividend", 1600); // NT$1,600
+        response.put("currency", "TWD");
         return response;
     }
 }

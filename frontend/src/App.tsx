@@ -12,6 +12,8 @@ import {
   InsightsPanel,
   GoLiveWizard,
   QuotaCard,
+  ProgressModal,
+  SimulationBadge,
 } from './components';
 import {
   fetchPortfolioSummary,
@@ -20,6 +22,7 @@ import {
   fetchPortfolioHistory,
   fetchInsights,
   fetchQuotaStatus,
+  fetchAppConfig,
   runMonthlyRebalance,
 } from './lib/api';
 import './i18n';
@@ -43,6 +46,7 @@ function Dashboard() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showGoLiveWizard, setShowGoLiveWizard] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
 
   const { data: summary } = useQuery({
     queryKey: ['portfolioSummary'],
@@ -75,8 +79,16 @@ function Dashboard() {
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes
   });
 
+  const { data: appConfig } = useQuery({
+    queryKey: ['appConfig'],
+    queryFn: fetchAppConfig,
+  });
+
   const rebalanceMutation = useMutation({
     mutationFn: runMonthlyRebalance,
+    onMutate: () => {
+      setShowProgressModal(true);
+    },
     onSuccess: (data) => {
       setHasRebalanced(true);
       localStorage.setItem('hasRebalanced', 'true');
@@ -94,7 +106,15 @@ function Dashboard() {
       setTimeout(() => setShowSuccess(false), 4000);
       qc.invalidateQueries();
     },
+    onError: () => {
+      setShowProgressModal(false);
+    },
   });
+
+  const handleProgressModalClose = () => {
+    setShowProgressModal(false);
+    qc.invalidateQueries();
+  };
 
   const handleGoLive = (option: 'fresh' | 'gradual' | 'oneshot', amount: number) => {
     console.log('Go Live:', option, amount);
@@ -110,6 +130,13 @@ function Dashboard() {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Simulation Mode Badge */}
+        {appConfig && (
+          <div className="flex justify-center mb-4">
+            <SimulationBadge mode={appConfig.tradingMode} />
+          </div>
+        )}
+
         {showSuccess && (
           <div className="fixed top-20 right-4 z-50 animate-bounce">
             <div className="bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
@@ -213,6 +240,12 @@ function Dashboard() {
         onClose={() => setShowGoLiveWizard(false)}
         currentBacktestValue={summary?.totalValue ?? 0}
         onGoLive={handleGoLive}
+      />
+
+      {/* Progress Modal */}
+      <ProgressModal
+        isOpen={showProgressModal}
+        onClose={handleProgressModalClose}
       />
     </div>
   );

@@ -8,3 +8,5 @@ export { HoldingsTable } from './HoldingsTable';
 export { InsightsPanel } from './InsightsPanel';
 export { GoLiveWizard } from './GoLiveWizard';
 export { QuotaCard } from './QuotaCard';
+export { ProgressModal } from './ProgressModal';
+export { SimulationBadge } from './SimulationBadge';

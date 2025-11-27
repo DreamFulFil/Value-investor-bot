@@ -78,4 +78,15 @@ public interface StockPriceHistoryRepository extends JpaRepository<StockPriceHis
      * Find prices older than a specific date for a symbol
      */
     List<StockPriceHistory> findBySymbolAndDateBefore(String symbol, LocalDate date);
+
+    /**
+     * Find nearest price before a specific date (for fallback when exact date not found)
+     */
+    @Query("SELECT s FROM StockPriceHistory s WHERE s.symbol = :symbol " +
+           "AND s.date <= :targetDate AND s.date >= :minDate " +
+           "ORDER BY s.date DESC LIMIT 1")
+    Optional<StockPriceHistory> findNearestPriceBeforeDate(
+            @Param("symbol") String symbol, 
+            @Param("targetDate") LocalDate targetDate,
+            @Param("minDate") LocalDate minDate);
 }

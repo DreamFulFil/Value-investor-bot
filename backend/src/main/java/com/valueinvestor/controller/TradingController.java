@@ -4,14 +4,17 @@ import com.valueinvestor.model.dto.RebalanceResultDTO;
 import com.valueinvestor.model.dto.TransactionDTO;
 import com.valueinvestor.model.entity.TransactionLog;
 import com.valueinvestor.repository.TransactionLogRepository;
+import com.valueinvestor.service.ProgressService;
 import com.valueinvestor.service.RebalanceService;
 import com.valueinvestor.service.TradingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -34,6 +37,18 @@ public class TradingController {
 
     @Autowired
     private TransactionLogRepository transactionLogRepository;
+    
+    @Autowired
+    private ProgressService progressService;
+
+    /**
+     * GET /api/trading/rebalance/progress - SSE endpoint for real-time progress updates
+     */
+    @GetMapping(value = "/rebalance/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getRebalanceProgress() {
+        logger.info("GET /api/trading/rebalance/progress - SSE connection established");
+        return progressService.createEmitter();
+    }
 
     /**
      * POST /api/trading/rebalance - Manually trigger rebalance
@@ -45,11 +60,19 @@ public class TradingController {
         try {
             RebalanceService.RebalanceResult result = rebalanceService.triggerRebalance();
             RebalanceResultDTO dto = convertToDTO(result);
+            
+            // Send completion event
+            if (result.isSuccess()) {
+                progressService.sendComplete("Portfolio updated successfully!");
+            } else {
+                progressService.sendError(result.getErrorMessage());
+            }
 
             return ResponseEntity.ok(dto);
 
         } catch (Exception e) {
             logger.error("Manual rebalance failed", e);
+            progressService.sendError("Rebalance failed: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
