@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Value Investor Bot API Contracts",
+  "description": "Shared contract definitions between Java backend, TypeScript frontend, and Python bridge",
+  
+  "definitions": {
+    "PositionDTO": {
+      "type": "object",
+      "description": "Backend returns this structure for each position",
+      "required": ["symbol"],
+      "properties": {
+        "symbol": { "type": "string", "description": "Stock symbol e.g. 2330.TW" },
+        "quantity": { "type": ["number", "null"], "description": "Number of shares owned" },
+        "averagePrice": { "type": ["number", "null"], "description": "Average purchase price" },
+        "currentPrice": { "type": ["number", "null"], "description": "Current market price" },
+        "marketValue": { "type": ["number", "null"], "description": "Current market value = quantity * currentPrice" },
+        "unrealizedPL": { "type": ["number", "null"], "description": "Unrealized profit/loss" },
+        "plPercentage": { "type": ["number", "null"], "description": "P/L as percentage" }
+      },
+      "additionalProperties": false
+    },
+    
+    "PortfolioSummaryDTO": {
+      "type": "object",
+      "description": "Response from GET /api/portfolio/current",
+      "properties": {
+        "totalValue": { "type": ["number", "null"] },
+        "cashBalance": { "type": ["number", "null"] },
+        "investedAmount": { "type": ["number", "null"] },
+        "totalPL": { "type": ["number", "null"] },
+        "plPercentage": { "type": ["number", "null"] },
+        "positionCount": { "type": "integer" },
+        "positions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PositionDTO" }
+        }
+      }
+    },
+    
+    "PortfolioSnapshot": {
+      "type": "object",
+      "description": "Response item from GET /api/portfolio/history",
+      "properties": {
+        "id": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "totalValue": { "type": ["number", "null"] },
+        "cashBalance": { "type": ["number", "null"] },
+        "investedAmount": { "type": ["number", "null"] },
+        "totalPL": { "type": ["number", "null"] },
+        "positionsJson": { "type": ["string", "null"] },
+        "snapshotType": { "type": "string", "enum": ["MONTHLY_REBALANCE", "DAILY", "MANUAL"] }
+      }
+    },
+    
+    "QuotaStatus": {
+      "type": "object",
+      "description": "Response from GET /api/quota",
+      "properties": {
+        "usedMB": { "type": "number" },
+        "limitMB": { "type": "number" },
+        "remainingMB": { "type": "number" },
+        "percentageUsed": { "type": "number" },
+        "fallbackActive": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    
+    "HealthResponse": {
+      "type": "object",
+      "description": "Response from GET /api/health",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["UP", "DOWN"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "service": { "type": "string" },
+        "version": { "type": "string" },
+        "tradingMode": { "type": "string", "enum": ["SIMULATION", "LIVE"] }
+      }
+    },
+    
+    "AppConfig": {
+      "type": "object",
+      "description": "Response from GET /api/config",
+      "properties": {
+        "tradingMode": { "type": "string", "enum": ["SIMULATION", "LIVE"] },
+        "monthlyInvestment": { "type": "number" },
+        "targetWeeklyDividend": { "type": "number" },
+        "currency": { "type": "string" }
+      }
+    },
+    
+    "RebalanceResultDTO": {
+      "type": "object",
+      "description": "Response from POST /api/trading/rebalance",
+      "properties": {
+        "success": { "type": "boolean" },
+        "message": { "type": ["string", "null"] },
+        "errorMessage": { "type": ["string", "null"] },
+        "totalTransactions": { "type": "integer" },
+        "startTime": { "type": ["string", "null"], "format": "date-time" },
+        "endTime": { "type": ["string", "null"], "format": "date-time" },
+        "monthlyResults": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "properties": {
+              "month": { "type": "string" },
+              "stocksPurchased": { "type": "integer" },
+              "amountInvested": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    
+    "InsightDTO": {
+      "type": "object",
+      "description": "Response item from GET /api/insights/history",
+      "properties": {
+        "id": { "type": "integer" },
+        "content": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  
+  "fieldMappings": {
+    "description": "Documents field name differences between backend and frontend",
+    "backend_to_frontend": {
+      "PositionDTO.quantity": "Position.shares",
+      "PositionDTO.unrealizedPL": "Position.unrealizedGain",
+      "PortfolioSnapshot.timestamp": "PortfolioHistory.date",
+      "PortfolioSnapshot.totalValue": "PortfolioHistory.value"
+    }
+  }
+}

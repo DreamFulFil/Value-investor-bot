@@ -54,3 +54,7 @@ logs/
 
 # Static resources (generated from frontend build)
 backend/src/main/resources/static/
+.frontend_build_timestamp
+.backend.log
+.backend.pid
+.shioaji_api.pid
