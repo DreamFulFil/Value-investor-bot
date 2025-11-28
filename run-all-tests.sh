@@ -403,7 +403,7 @@ if $RUN_E2E; then
     # Check if Playwright is installed
     if ! npm list @playwright/test > /dev/null 2>&1; then
         print_step "Installing Playwright..."
-        npm install -D @playwright/test
+        npm install -D @playwright/test --legacy-peer-deps
         npx playwright install chromium
     fi
     
