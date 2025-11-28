@@ -1,8 +1,8 @@
-# Value Investor Bot — Taiwan Edition (v2.3)
+# Value Investor Bot — Taiwan Edition (v2.4)
 
 🇹🇼 AI-powered automated value investing bot for Taiwan stock market
 
-[![Tests](https://img.shields.io/badge/tests-180%2B%20passing-brightgreen)](./run-all-tests.sh)
+[![Tests](https://img.shields.io/badge/tests-14%20suites%20passing-brightgreen)](./run-all-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
@@ -130,10 +130,16 @@ MIT License | Educational purposes only | Not financial advice
 
 ## Testing
 
-The project includes comprehensive test coverage with **180+ tests** across all stacks, organized into Unit, Integration, and E2E layers.
+The project includes comprehensive test coverage across all stacks, organized into Unit, Integration, and E2E layers.
+
+**Latest Test Run:** All 14 test suites passing ✅
 
 ### Run All Tests
 ```bash
+# Start services first (required for E2E tests)
+./run.sh <decrypt_key>
+
+# Run all tests
 ./run-all-tests.sh
 ```
 
@@ -149,15 +155,17 @@ The project includes comprehensive test coverage with **180+ tests** across all 
 
 ### Test Breakdown
 
-| Category | Stack | Tests | Description |
-|----------|-------|-------|-------------|
-| **Unit** | Frontend (TypeScript) | 45+ | Component, hook, utility tests |
-| **Unit** | Backend (Java) | 50+ | Service layer tests with mocks |
-| **Unit** | Python Bridge | 25+ | Client and API function tests |
-| **Integration** | Frontend | 15+ | API integration, contract tests |
-| **Integration** | Backend | 25+ | Controller, repository, full-stack tests |
-| **Integration** | Python | 10+ | Cross-component tests |
-| **E2E** | Playwright | 20+ | Dashboard, rebalance flow, responsive design |
+| Category | Stack | Suite | Individual Tests |
+|----------|-------|-------|------------------|
+| **Unit** | Frontend (TypeScript) | 1 | 68 tests |
+| **Unit** | Backend (Java) | 2 | 50+ tests |
+| **Unit** | Python Bridge | 1 | 16 tests |
+| **Integration** | Frontend | 1 | Included above |
+| **Integration** | Backend | 3 | 30+ tests |
+| **Integration** | Python | 1 | Included above |
+| **Contract** | All stacks | 3 | API compatibility |
+| **E2E** | Playwright | 2 | 37 tests × 5 browsers |
+| | | **14 suites** | **250+ test cases** |
 
 ### E2E Tests (Playwright)
 
