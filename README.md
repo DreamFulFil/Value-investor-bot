@@ -1,11 +1,11 @@
-# Value Investor Bot — Taiwan Edition (v2.2)
+# Value Investor Bot — Taiwan Edition (v2.3)
 
 🇹🇼 AI-powered automated value investing bot for Taiwan stock market
 
-[![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)](./run-tests.sh)
+[![Tests](https://img.shields.io/badge/tests-180%2B%20passing-brightgreen)](./run-all-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
-[![React](https://img.shields.io/badge/React-18-blue)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 ## Investment Goal
@@ -55,7 +55,10 @@ After backtesting, click "Go Live" to start real trading:
 | `./run.sh reset` | Reset portfolio data (fresh start) |
 | `./run.sh clean` | Full cleanup (rebuild required) |
 | `./run.sh <key> encrypt` | Encrypt .env credentials |
-| `./run-tests.sh` | Run all tests (Java + TypeScript + Python) |
+| `./run-all-tests.sh` | Run all tests (Unit + Integration + E2E) |
+| `./run-all-tests.sh --quick` | Run tests without E2E (faster) |
+| `./run-all-tests.sh --unit` | Run only unit tests |
+| `./run-all-tests.sh --e2e` | Run only E2E browser tests |
 
 ## .env Encryption
 
@@ -86,7 +89,7 @@ Value-investor-bot/
 ├── contracts/        # Shared API contract definitions (JSON Schema)
 ├── .env              # Encrypted environment variables
 ├── run.sh            # Startup script (bulletproof, auto-opens browser)
-└── run-tests.sh      # Comprehensive test runner
+└── run-all-tests.sh  # Universal test runner (Unit/Integration/E2E)
 ```
 
 ## Safety Features
@@ -127,21 +130,58 @@ MIT License | Educational purposes only | Not financial advice
 
 ## Testing
 
-The project includes comprehensive test coverage with **148 tests** across all stacks.
+The project includes comprehensive test coverage with **180+ tests** across all stacks, organized into Unit, Integration, and E2E layers.
 
 ### Run All Tests
 ```bash
-./run-tests.sh
+./run-all-tests.sh
+```
+
+### Test Options
+```bash
+./run-all-tests.sh              # Run all tests (Unit + Integration + E2E)
+./run-all-tests.sh --quick      # Skip E2E tests (faster)
+./run-all-tests.sh --unit       # Run only unit tests
+./run-all-tests.sh --integration # Run only integration tests
+./run-all-tests.sh --e2e        # Run only E2E browser tests
+./run-all-tests.sh --verbose    # Show detailed output
 ```
 
 ### Test Breakdown
 
-| Stack | Tests | Description |
-|-------|-------|-------------|
-| **Frontend (TypeScript)** | 68 | Unit, contract, integration, component tests |
-| **Backend (Java)** | 9 | Contract tests (DTO serialization) |
-| **Python Bridge** | 71 | Contract, unit, API endpoint tests |
-| **Total** | **148** | All passing ✅ |
+| Category | Stack | Tests | Description |
+|----------|-------|-------|-------------|
+| **Unit** | Frontend (TypeScript) | 45+ | Component, hook, utility tests |
+| **Unit** | Backend (Java) | 50+ | Service layer tests with mocks |
+| **Unit** | Python Bridge | 25+ | Client and API function tests |
+| **Integration** | Frontend | 15+ | API integration, contract tests |
+| **Integration** | Backend | 25+ | Controller, repository, full-stack tests |
+| **Integration** | Python | 10+ | Cross-component tests |
+| **E2E** | Playwright | 20+ | Dashboard, rebalance flow, responsive design |
+
+### E2E Tests (Playwright)
+
+Browser automation tests covering critical user journeys:
+
+```bash
+# Install Playwright browsers
+cd frontend && npm run playwright:install
+
+# Run E2E tests
+npm run test:e2e              # Headless (CI-friendly)
+npm run test:e2e:headed       # With browser visible
+npm run test:e2e:ui           # Interactive UI mode
+```
+
+**E2E Test Coverage:**
+- Dashboard page load and display
+- Rebalance button interaction
+- Progress modal tracking
+- First-time user journey
+- Same-month idempotency check
+- Error handling and recovery
+- Responsive design (mobile/tablet)
+- Language toggle (EN/中文)
 
 ### Contract Tests (Most Critical)
 These tests catch field name mismatches between backend and frontend:
@@ -152,22 +192,40 @@ These tests catch field name mismatches between backend and frontend:
 
 ### Individual Test Commands
 ```bash
-# Frontend (TypeScript/Vitest)
-cd frontend && npm test
+# Frontend Unit Tests (Vitest)
+cd frontend && npm test              # Watch mode
+cd frontend && npm run test:run      # Run once
+cd frontend && npm run test:unit     # Unit only
+cd frontend && npm run test:coverage # With coverage
+
+# Frontend E2E Tests (Playwright)
+cd frontend && npm run test:e2e      # All browsers
+cd frontend && npx playwright test --project=chromium  # Chrome only
 
 # Backend (Java/JUnit 5)
-cd backend && mvn test -Dtest=ApiContractTest
+cd backend && mvn test                              # All tests
+cd backend && mvn test -Dtest='*ServiceTest'        # Unit tests
+cd backend && mvn test -Dtest='*ControllerTest'     # Controller tests
+cd backend && mvn test -Dtest='*IntegrationTest'    # Integration tests
 
 # Python (pytest)
-cd shioaji_bridge && pytest tests/ -v
+cd shioaji_bridge && source venv/bin/activate
+pytest tests/ -v                                    # All tests
+pytest tests/test_shioaji_client.py -v              # Unit tests
+pytest tests/test_integration.py -v                 # Integration tests
 ```
 
 ### Test Coverage Highlights
+- ✅ **Unit Tests**: Isolated logic testing with mocked dependencies
+- ✅ **Integration Tests**: Component interaction and API contracts
+- ✅ **E2E Tests**: Full user journey with Playwright browser automation
 - ✅ Null/undefined safety (prevents `toLocaleString()` crashes)
 - ✅ API field name contracts (catches `quantity` vs `shares` mismatches)
 - ✅ Empty array/object handling
 - ✅ Division by zero protection
 - ✅ Negative value formatting
+- ✅ Responsive design validation
+- ✅ Multi-browser compatibility (Chrome, Firefox, Safari, Mobile)
 
 ## Development
 
@@ -176,6 +234,7 @@ cd shioaji_bridge && pytest tests/ -v
 - Node.js 18+
 - Python 3.10+
 - Ollama (optional)
+- Playwright browsers (for E2E tests): `cd frontend && npm run playwright:install`
 
 ### Building
 ```bash
@@ -196,7 +255,7 @@ cd frontend && npm install && npm run build
 1. Fork the repository
 2. Create a feature branch
 3. Write tests (required: maintain 100% contract test coverage)
-4. Run `./run-tests.sh` to verify all tests pass
+4. Run `./run-all-tests.sh` to verify all tests pass
 5. Submit PR
 
 **Important**: All tests must pass before committing. The CI will reject PRs with failing tests.

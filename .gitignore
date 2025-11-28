@@ -58,3 +58,6 @@ backend/src/main/resources/static/
 .backend.log
 .backend.pid
 .shioaji_api.pid
+.aider*
+.env
+.env
