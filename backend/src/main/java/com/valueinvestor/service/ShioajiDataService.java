@@ -1,10 +1,10 @@
 package com.valueinvestor.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.valueinvestor.config.ShioajiProperties;
 import com.valueinvestor.model.entity.StockPriceHistory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.ResourceAccessException;
@@ -23,8 +23,8 @@ public class ShioajiDataService {
     private final RestTemplate restTemplate;
     private volatile boolean isAvailable = false;
 
-    public ShioajiDataService(@Value("${shioaji.api-url:http://127.0.0.1:8888}") String shioajiApiUrl) {
-        this.shioajiApiUrl = shioajiApiUrl;
+    public ShioajiDataService(ShioajiProperties shioajiProperties) {
+        this.shioajiApiUrl = shioajiProperties.getApiUrl();
         this.restTemplate = new RestTemplate();
         checkAvailability();
     }

@@ -1,5 +1,6 @@
 package com.valueinvestor.service;
 
+import com.valueinvestor.config.AppProperties;
 import com.valueinvestor.model.entity.StockUniverse;
 import com.valueinvestor.model.dto.StockUniverseDTO;
 import com.valueinvestor.repository.StockUniverseRepository;
@@ -7,7 +8,6 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +28,8 @@ public class StockUniverseService {
     @Autowired
     private TaiwanStockScreenerService stockScreenerService;
     
-    @Value("${app.stock-universe.initial-size:50}")
-    private int initialUniverseSize;
+    @Autowired
+    private AppProperties appProperties;
 
     /**
      * Initialize stock universe on application startup
@@ -42,6 +42,7 @@ public class StockUniverseService {
 
         if (existingCount == 0) {
             // Get top dividend stocks from screener service
+            int initialUniverseSize = appProperties.getStockUniverse().getInitialSize();
             List<TaiwanStockScreenerService.StockInfo> topStocks = 
                 stockScreenerService.getTopDividendStocks(initialUniverseSize);
             
