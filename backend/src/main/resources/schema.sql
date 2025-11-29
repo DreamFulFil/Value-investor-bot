@@ -138,6 +138,15 @@ CREATE TABLE IF NOT EXISTS insights_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Trading Config Table (persistent trading configuration)
+CREATE TABLE IF NOT EXISTS trading_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key VARCHAR(50) NOT NULL UNIQUE,
+    config_value VARCHAR(200) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_transaction_log_symbol ON transaction_log(symbol);
 CREATE INDEX IF NOT EXISTS idx_transaction_log_date ON transaction_log(transaction_date);

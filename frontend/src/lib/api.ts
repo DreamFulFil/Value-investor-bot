@@ -65,6 +65,23 @@ export interface AppConfig {
   monthlyInvestment: number;
   targetWeeklyDividend: number;
   currency: string;
+  hasEverGoneLive?: boolean;
+  goLiveDate?: string;
+}
+
+export interface LiveStatus {
+  isLive: boolean;
+  hasEverGoneLive: boolean;
+  goLiveDate: string | null;
+  goLiveOption: string | null;
+}
+
+export interface GoLiveResult {
+  success: boolean;
+  message: string;
+  alreadyLive?: boolean;
+  goLiveDate?: string;
+  option?: string;
 }
 
 export interface ProgressEvent {
@@ -184,16 +201,50 @@ export const fetchQuotaStatus = async (): Promise<QuotaStatus> => {
 
 export const fetchAppConfig = async (): Promise<AppConfig> => {
   try {
-    const { data } = await api.get('/config');
+    const [configRes, liveStatusRes] = await Promise.all([
+      api.get('/config'),
+      api.get('/trading/live-status').catch(() => ({ data: { isLive: false, hasEverGoneLive: false } }))
+    ]);
+    
+    const data = configRes.data;
+    const liveStatus = liveStatusRes.data;
+    
     return {
-      tradingMode: data.tradingMode || 'SIMULATION',
+      tradingMode: liveStatus.isLive ? 'LIVE' : (data.tradingMode || 'SIMULATION'),
       monthlyInvestment: data.monthlyInvestment || 16000,
       targetWeeklyDividend: data.targetWeeklyDividend || 1600,
       currency: data.currency || 'TWD',
+      hasEverGoneLive: liveStatus.hasEverGoneLive || false,
+      goLiveDate: liveStatus.goLiveDate || null,
     };
   } catch {
     return { tradingMode: 'SIMULATION', monthlyInvestment: 16000, targetWeeklyDividend: 1600, currency: 'TWD' };
   }
+};
+
+export const fetchLiveStatus = async (): Promise<LiveStatus> => {
+  try {
+    const { data } = await api.get('/trading/live-status');
+    return {
+      isLive: data.isLive || false,
+      hasEverGoneLive: data.hasEverGoneLive || false,
+      goLiveDate: data.goLiveDate || null,
+      goLiveOption: data.goLiveOption || null,
+    };
+  } catch {
+    return { isLive: false, hasEverGoneLive: false, goLiveDate: null, goLiveOption: null };
+  }
+};
+
+export const activateLiveMode = async (option: string, amount: number): Promise<GoLiveResult> => {
+  const { data } = await api.post('/trading/go-live', { option, amount });
+  return {
+    success: data.success,
+    message: data.message,
+    alreadyLive: data.alreadyLive,
+    goLiveDate: data.goLiveDate,
+    option: data.option,
+  };
 };
 
 export const checkHealth = async (): Promise<boolean> => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -38,7 +38,7 @@ const queryClient = new QueryClient({
 });
 
 function Dashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const [hasRebalanced, setHasRebalanced] = useState(() => {
     return localStorage.getItem('hasRebalanced') === 'true';
@@ -124,16 +124,47 @@ function Dashboard() {
 
   const isEmpty = !hasRebalanced || (summary?.totalValue === 0 && positions.length === 0);
   const weeklyDividend = dividends ? dividends.projectedAnnualDividends / 52 : 0;
+  const isLiveMode = appConfig?.tradingMode === 'LIVE';
+  const hasEverGoneLive = appConfig?.hasEverGoneLive ?? false;
+
+  // Show LIVE mode startup toast
+  const [showLiveToast, setShowLiveToast] = useState(false);
+  
+  // Show LIVE mode toast on mount if in LIVE mode
+  useEffect(() => {
+    if (isLiveMode) {
+      setShowLiveToast(true);
+      const timer = setTimeout(() => setShowLiveToast(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLiveMode]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Simulation Mode Badge */}
+        {/* Trading Mode Badge */}
         {appConfig && (
           <div className="flex justify-center mb-4">
-            <SimulationBadge mode={appConfig.tradingMode} />
+            <SimulationBadge mode={appConfig.tradingMode} goLiveDate={appConfig.goLiveDate} />
+          </div>
+        )}
+
+        {/* LIVE mode startup toast */}
+        {showLiveToast && isLiveMode && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
+            <div className="bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
+              <span className="text-2xl">🔴</span>
+              <div>
+                <p className="font-bold">{t('liveTrading')}</p>
+                <p className="text-sm opacity-90">
+                  {i18n.language === 'zh' 
+                    ? '真實訂單將於每月1日執行' 
+                    : 'Real orders will execute on the 1st'}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -160,8 +191,8 @@ function Dashboard() {
             </p>
           )}
           
-          {/* Go Live Button - show after some backtest months */}
-          {hasRebalanced && summary && summary.totalValue > 0 && (
+          {/* Go Live Button - HIDDEN once LIVE mode is activated */}
+          {!hasEverGoneLive && hasRebalanced && summary && summary.totalValue > 0 && (
             <div className="text-center mt-4">
               <button
                 onClick={() => setShowGoLiveWizard(true)}

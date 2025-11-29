@@ -8,6 +8,9 @@ import com.valueinvestor.util.PythonExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,10 @@ public class TradingService {
 
     @Autowired
     private PythonExecutor pythonExecutor;
+
+    // Track partial fill information for recovery
+    private volatile String lastOrderError = null;
+    private volatile boolean lastOrderPartiallyFilled = false;
 
     /**
      * Execute a buy order
@@ -58,22 +65,30 @@ public class TradingService {
 
             // Execute order based on mode
             if (mode == TransactionLog.TradingMode.LIVE) {
-                // Execute via Shioaji
-                PythonExecutor.ShioajiOrderResult result = pythonExecutor.executeShioajiOrder(
+                // Execute via Shioaji with retry logic
+                PythonExecutor.ShioajiOrderResult result = executeShioajiOrderWithRetry(
                         "BUY", symbol, quantity, price);
 
                 if (!result.isSuccess()) {
-                    throw new RuntimeException("Shioaji order failed: " + result.getMessage());
+                    lastOrderError = result.getMessage();
+                    throw new LiveOrderException("Shioaji order failed: " + result.getMessage());
                 }
 
                 // Update quantity and price with filled values
                 if (result.getFilledQuantity() != null) {
                     quantity = result.getFilledQuantity();
+                    if (quantity.compareTo(BigDecimal.ZERO) == 0) {
+                        lastOrderPartiallyFilled = true;
+                        throw new LiveOrderException("Order not filled - will retry");
+                    }
                 }
                 if (result.getFilledPrice() != null) {
                     price = result.getFilledPrice();
                     totalAmount = quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
                 }
+                
+                lastOrderError = null;
+                lastOrderPartiallyFilled = false;
             }
 
             // Log transaction
@@ -127,12 +142,13 @@ public class TradingService {
 
             // Execute order based on mode
             if (mode == TransactionLog.TradingMode.LIVE) {
-                // Execute via Shioaji
-                PythonExecutor.ShioajiOrderResult result = pythonExecutor.executeShioajiOrder(
+                // Execute via Shioaji with retry logic
+                PythonExecutor.ShioajiOrderResult result = executeShioajiOrderWithRetry(
                         "SELL", symbol, quantity, price);
 
                 if (!result.isSuccess()) {
-                    throw new RuntimeException("Shioaji order failed: " + result.getMessage());
+                    lastOrderError = result.getMessage();
+                    throw new LiveOrderException("Shioaji order failed: " + result.getMessage());
                 }
 
                 // Update quantity and price with filled values
@@ -143,6 +159,8 @@ public class TradingService {
                     price = result.getFilledPrice();
                     totalAmount = quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
                 }
+                
+                lastOrderError = null;
             }
 
             // Log transaction
@@ -261,5 +279,79 @@ public class TradingService {
         );
         
         return transactionLogRepository.save(deposit);
+    }
+
+    /**
+     * Execute Shioaji order with retry logic.
+     * 3 attempts with 2s exponential backoff.
+     */
+    @Retryable(
+        retryFor = { LiveOrderException.class, RuntimeException.class },
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public PythonExecutor.ShioajiOrderResult executeShioajiOrderWithRetry(
+            String action, String symbol, BigDecimal quantity, BigDecimal price) throws Exception {
+        
+        logger.info("🔄 Attempting {} order for {} shares of {} at NT${}", action, quantity, symbol, price);
+        
+        try {
+            PythonExecutor.ShioajiOrderResult result = pythonExecutor.executeShioajiOrder(
+                    action, symbol, quantity, price);
+            
+            if (result.isSuccess()) {
+                logger.info("✅ {} order succeeded for {}", action, symbol);
+            }
+            
+            return result;
+            
+        } catch (Exception e) {
+            logger.warn("⚠️ {} order attempt failed for {}: {} - will retry...", action, symbol, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Recovery method called after all retries exhausted.
+     */
+    @Recover
+    public PythonExecutor.ShioajiOrderResult recoverFromOrderFailure(
+            Exception e, String action, String symbol, BigDecimal quantity, BigDecimal price) {
+        
+        logger.error("❌ FINAL FAILURE: {} order for {} failed after 3 attempts: {}", action, symbol, e.getMessage());
+        lastOrderError = "Order failed after 3 retries: " + e.getMessage();
+        
+        // Return a failure result
+        PythonExecutor.ShioajiOrderResult failResult = new PythonExecutor.ShioajiOrderResult();
+        failResult.setSuccess(false);
+        failResult.setMessage("Order failed after 3 retries: " + e.getMessage());
+        return failResult;
+    }
+
+    /**
+     * Get the last order error message (for UI toast).
+     */
+    public String getLastOrderError() {
+        return lastOrderError;
+    }
+
+    /**
+     * Check if last order was partially filled.
+     */
+    public boolean wasLastOrderPartiallyFilled() {
+        return lastOrderPartiallyFilled;
+    }
+
+    /**
+     * Custom exception for live order failures that should trigger retry.
+     */
+    public static class LiveOrderException extends RuntimeException {
+        public LiveOrderException(String message) {
+            super(message);
+        }
+        
+        public LiveOrderException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

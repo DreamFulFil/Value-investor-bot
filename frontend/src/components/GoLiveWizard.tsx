@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { activateLiveMode } from '../lib/api';
 
 interface GoLiveWizardProps {
   isOpen: boolean;
@@ -13,6 +14,9 @@ export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }
   const [selectedOption, setSelectedOption] = useState<'fresh' | 'gradual' | 'oneshot' | null>(null);
   const [depositAmount, setDepositAmount] = useState(16000);
   const [catchUpMonths, setCatchUpMonths] = useState(12);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmStep, setConfirmStep] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isZhTW = i18n.language === 'zh';
 
@@ -45,8 +49,13 @@ export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }
     },
   ];
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedOption) return;
+    
+    if (!confirmStep) {
+      setConfirmStep(true);
+      return;
+    }
     
     let amount = depositAmount;
     if (selectedOption === 'oneshot') {
@@ -55,8 +64,25 @@ export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }
       amount = Math.ceil(currentBacktestValue / catchUpMonths);
     }
     
-    onGoLive(selectedOption, amount);
-    onClose();
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      const result = await activateLiveMode(selectedOption, amount);
+      
+      if (result.success) {
+        onGoLive(selectedOption, amount);
+        onClose();
+        // Reload to reflect new LIVE mode
+        window.location.reload();
+      } else {
+        setError(result.message);
+      }
+    } catch (e) {
+      setError(isZhTW ? '啟用失敗，請稍後再試' : 'Failed to activate. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -181,29 +207,57 @@ export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }
                 </p>
               </div>
             )}
+            
+            {/* Final confirmation warning */}
+            {confirmStep && (
+              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-500">
+                <p className="text-sm font-bold text-red-700 dark:text-red-300 mb-2">
+                  🚨 {isZhTW ? '最終確認' : 'FINAL CONFIRMATION'}
+                </p>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {isZhTW 
+                    ? '這是不可逆的操作！一旦啟用真實交易模式，將無法回到模擬模式。您的帳戶將在每月1日執行真實股票交易。'
+                    : 'This is PERMANENT and cannot be undone! Once activated, LIVE mode cannot be reverted. Real stock orders will execute on the 1st of each month.'}
+                </p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
-            onClick={onClose}
-            className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
+            onClick={() => { setConfirmStep(false); onClose(); }}
+            disabled={isSubmitting}
+            className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
             {isZhTW ? '取消' : 'Cancel'}
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!selectedOption}
+            disabled={!selectedOption || isSubmitting}
             className={`
-              flex-1 py-3 px-4 rounded-xl font-medium
-              ${selectedOption
-                ? 'bg-green-500 text-white hover:bg-green-600'
+              flex-1 py-3 px-4 rounded-xl font-medium transition-all
+              ${selectedOption && !isSubmitting
+                ? confirmStep 
+                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
+                  : 'bg-green-500 text-white hover:bg-green-600'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}
           >
-            {isZhTW ? '確認開始' : 'Confirm & Go Live'}
+            {isSubmitting 
+              ? (isZhTW ? '處理中...' : 'Processing...')
+              : confirmStep 
+                ? (isZhTW ? '🔴 確認啟用真實交易' : '🔴 CONFIRM LIVE TRADING')
+                : (isZhTW ? '確認開始' : 'Confirm & Go Live')
+            }
           </button>
         </div>
       </div>

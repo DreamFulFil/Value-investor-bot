@@ -42,6 +42,9 @@ public class StockFundamentals {
     private BigDecimal roe;
 
     @Column
+    private BigDecimal eps;
+
+    @Column
     private BigDecimal currentPrice;
 
     @Column(length = 10)
@@ -53,14 +56,14 @@ public class StockFundamentals {
     // Constructors
     public StockFundamentals() {
         this.lastUpdated = LocalDateTime.now();
-        this.market = "US";
+        this.market = "TW";
     }
 
     public StockFundamentals(String symbol, String name) {
         this.symbol = symbol;
         this.name = name;
         this.lastUpdated = LocalDateTime.now();
-        this.market = "US";
+        this.market = "TW";
     }
 
     // Getters and Setters
@@ -142,6 +145,14 @@ public class StockFundamentals {
 
     public void setRoe(BigDecimal roe) {
         this.roe = roe;
+    }
+
+    public BigDecimal getEps() {
+        return eps;
+    }
+
+    public void setEps(BigDecimal eps) {
+        this.eps = eps;
     }
 
     public BigDecimal getCurrentPrice() {

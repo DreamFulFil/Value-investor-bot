@@ -6,6 +6,7 @@ import com.valueinvestor.model.entity.TransactionLog;
 import com.valueinvestor.repository.TransactionLogRepository;
 import com.valueinvestor.service.ProgressService;
 import com.valueinvestor.service.RebalanceService;
+import com.valueinvestor.service.TradingConfigService;
 import com.valueinvestor.service.TradingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +42,9 @@ public class TradingController {
     
     @Autowired
     private ProgressService progressService;
+
+    @Autowired
+    private TradingConfigService tradingConfigService;
 
     /**
      * GET /api/trading/rebalance/progress - SSE endpoint for real-time progress updates
@@ -165,6 +170,80 @@ public class TradingController {
             logger.error("Failed to get transactions for {}", symbol, e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * POST /api/trading/go-live - Activate LIVE trading mode permanently.
+     * This is a ONE-WAY operation - once activated, cannot be reverted.
+     */
+    @PostMapping("/go-live")
+    public ResponseEntity<Map<String, Object>> goLive(@RequestBody GoLiveRequest request) {
+        logger.warn("========================================");
+        logger.warn("🚨 GO LIVE REQUEST RECEIVED");
+        logger.warn("Option: {}, Amount: {}", request.option, request.amount);
+        logger.warn("========================================");
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Check if already live
+            if (tradingConfigService.hasEverGoneLive()) {
+                response.put("success", false);
+                response.put("message", "LIVE mode is already active - cannot activate again");
+                response.put("alreadyLive", true);
+                return ResponseEntity.ok(response);
+            }
+
+            // Activate LIVE mode permanently
+            boolean activated = tradingConfigService.activateLiveMode(request.option);
+
+            if (activated) {
+                // Create initial deposit if amount > 0
+                if (request.amount != null && request.amount.compareTo(BigDecimal.ZERO) > 0) {
+                    tradingService.createDeposit(request.amount, TransactionLog.TradingMode.LIVE, 
+                        "Initial LIVE deposit - " + request.option);
+                }
+
+                response.put("success", true);
+                response.put("message", "🔴 LIVE MODE ACTIVATED - Real money trading is now enabled!");
+                response.put("goLiveDate", tradingConfigService.getGoLiveDate());
+                response.put("option", request.option);
+                
+                logger.warn("✅ LIVE MODE SUCCESSFULLY ACTIVATED");
+            } else {
+                response.put("success", false);
+                response.put("message", "Failed to activate LIVE mode");
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Failed to activate LIVE mode", e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
+     * GET /api/trading/live-status - Check if LIVE mode is active
+     */
+    @GetMapping("/live-status")
+    public ResponseEntity<Map<String, Object>> getLiveStatus() {
+        Map<String, Object> status = new HashMap<>();
+        
+        status.put("isLive", tradingConfigService.isLiveMode());
+        status.put("hasEverGoneLive", tradingConfigService.hasEverGoneLive());
+        status.put("goLiveDate", tradingConfigService.getGoLiveDate());
+        status.put("goLiveOption", tradingConfigService.getGoLiveOption());
+        
+        return ResponseEntity.ok(status);
+    }
+
+    // Request class for go-live
+    public static class GoLiveRequest {
+        public String option; // fresh, gradual, oneshot
+        public BigDecimal amount;
     }
 
     // Helper methods

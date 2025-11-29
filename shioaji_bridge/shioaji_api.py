@@ -498,6 +498,115 @@ async def get_history_yahoo(symbol: str, start_date: str, end_date: str) -> Hist
         )
 
 
+class FundamentalsResponse(BaseModel):
+    success: bool
+    symbol: Optional[str] = None
+    name: Optional[str] = None
+    sector: Optional[str] = None
+    dividendYield: Optional[float] = None
+    peRatio: Optional[float] = None
+    pbRatio: Optional[float] = None
+    roe: Optional[float] = None
+    eps: Optional[float] = None
+    marketCap: Optional[float] = None
+    currentPrice: Optional[float] = None
+    error: Optional[str] = None
+
+
+@app.get("/fundamentals/{symbol}", response_model=FundamentalsResponse)
+async def get_fundamentals(symbol: str):
+    """
+    Get fundamental data for a Taiwan stock symbol.
+    Fetches dividend yield, P/E, P/B, ROE, EPS, market cap from Yahoo Finance.
+    """
+    try:
+        # Convert to Yahoo Finance format
+        yahoo_symbol = symbol.upper()
+        if not ('.TW' in yahoo_symbol or '.TWO' in yahoo_symbol):
+            yahoo_symbol = f"{yahoo_symbol}.TW"
+        
+        logger.info(f"Fetching fundamentals for {yahoo_symbol}")
+        
+        ticker = yf.Ticker(yahoo_symbol)
+        info = ticker.info
+        
+        if not info or 'symbol' not in info:
+            # Try OTC market
+            yahoo_symbol = yahoo_symbol.replace('.TW', '.TWO')
+            ticker = yf.Ticker(yahoo_symbol)
+            info = ticker.info
+        
+        if not info:
+            return FundamentalsResponse(success=False, error=f"No data found for {symbol}")
+        
+        # Extract fundamentals
+        dividend_yield = None
+        if info.get('dividendYield'):
+            dividend_yield = float(info['dividendYield']) * 100  # Convert to percentage
+        elif info.get('trailingAnnualDividendYield'):
+            dividend_yield = float(info['trailingAnnualDividendYield']) * 100
+        
+        pe_ratio = info.get('trailingPE') or info.get('forwardPE')
+        pb_ratio = info.get('priceToBook')
+        
+        # ROE calculation from profitMargins and other metrics if available
+        roe = info.get('returnOnEquity')
+        if roe:
+            roe = float(roe) * 100  # Convert to percentage
+        
+        eps = info.get('trailingEps')
+        market_cap = info.get('marketCap')
+        current_price = info.get('regularMarketPrice') or info.get('currentPrice')
+        
+        name = info.get('shortName') or info.get('longName') or symbol
+        sector = info.get('sector') or determine_sector_from_code(symbol)
+        
+        return FundamentalsResponse(
+            success=True,
+            symbol=symbol.upper(),
+            name=name,
+            sector=sector,
+            dividendYield=round(dividend_yield, 2) if dividend_yield else None,
+            peRatio=round(float(pe_ratio), 2) if pe_ratio else None,
+            pbRatio=round(float(pb_ratio), 2) if pb_ratio else None,
+            roe=round(roe, 2) if roe else None,
+            eps=round(float(eps), 2) if eps else None,
+            marketCap=float(market_cap) if market_cap else None,
+            currentPrice=round(float(current_price), 2) if current_price else None
+        )
+        
+    except Exception as e:
+        logger.error(f"Error fetching fundamentals for {symbol}: {e}")
+        return FundamentalsResponse(success=False, error=str(e))
+
+
+def determine_sector_from_code(symbol: str) -> str:
+    """Determine sector based on Taiwan stock code pattern."""
+    code = symbol.replace(".TW", "").replace(".TWO", "")
+    try:
+        code_num = int(code)
+        if 1100 <= code_num < 1300: return "Materials"
+        if 1200 <= code_num < 1400: return "Consumer Staples"
+        if 1400 <= code_num < 1600: return "Materials"
+        if 1700 <= code_num < 1800: return "Materials"
+        if 2000 <= code_num < 2100: return "Materials"
+        if 2100 <= code_num < 2200: return "Consumer Discretionary"
+        if 2200 <= code_num < 2400: return "Consumer Discretionary"
+        if 2300 <= code_num < 2500: return "Technology"
+        if 2400 <= code_num < 2500: return "Telecom"
+        if 2500 <= code_num < 2700: return "Real Estate"
+        if 2600 <= code_num < 2700: return "Industrials"
+        if 2800 <= code_num < 3000: return "Financials"
+        if 3000 <= code_num < 4000: return "Technology"
+        if 4000 <= code_num < 5000: return "Telecom"
+        if 5800 <= code_num < 6000: return "Financials"
+        if 6000 <= code_num < 7000: return "Technology"
+        if 9900 <= code_num < 10000: return "Consumer Discretionary"
+    except ValueError:
+        pass
+    return "Other"
+
+
 if __name__ == "__main__":
     import uvicorn
 

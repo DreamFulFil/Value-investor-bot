@@ -1,12 +1,56 @@
-# Value Investor Bot — Taiwan Edition (v2.4)
+# Value Investor Bot — Taiwan Edition (v2.5)
 
 🇹🇼 AI-powered automated value investing bot for Taiwan stock market
 
+[![CI](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-14%20suites%20passing-brightgreen)](./run-all-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
+---
+
+## 🔴 GOING LIVE – FINAL CHECKLIST
+
+> **⚠️ WARNING: Once you activate LIVE mode, it is PERMANENT and cannot be reverted!**
+
+Before clicking "Go Live", verify ALL of the following:
+
+### Pre-Flight Checklist
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | ✅ Run at least **12 months of simulation** | Required |
+| 2 | ✅ Verify Shioaji API credentials are correct | Required |
+| 3 | ✅ Confirm your brokerage account has sufficient funds | Required |
+| 4 | ✅ Understand that real money will be traded | Required |
+| 5 | ✅ Accept that past performance ≠ future results | Required |
+
+### What Happens When You Go Live
+
+1. **Permanent DB Change**: `trading.mode = LIVE` is written to database
+2. **No Revert**: The "Go Live" button disappears forever
+3. **Real Orders**: On the 1st of each month, real buy orders execute via Shioaji
+4. **Green Badge**: Dashboard shows permanent "🔴 LIVE MODE – Real Money" badge
+5. **Startup Toast**: Every app start shows "LIVE mode active" notification
+
+### Go Live Options
+
+| Option | Description | Initial Deposit |
+|--------|-------------|-----------------|
+| **Start Fresh** | Begin new portfolio from today | Your choice (NT$16,000+) |
+| **Gradual Catch-Up** | Sync to backtest over 6-18 months | Auto-calculated monthly |
+| **One-Shot Match** | Instantly match backtest value | Full backtest value |
+
+### After Going Live
+
+- Orders execute automatically on the 1st of each month
+- Failed orders retry 3 times with 2-second backoff
+- Check Shioaji for order confirmations
+- Monitor the dashboard for real portfolio performance
+
+---
 
 ## Investment Goal
 - **Monthly Investment**: NT$16,000

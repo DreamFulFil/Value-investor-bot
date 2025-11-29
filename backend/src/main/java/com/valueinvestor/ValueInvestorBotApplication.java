@@ -2,16 +2,18 @@ package com.valueinvestor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Value Investor Bot Application
  *
- * A sophisticated automated value investing system supporting US stock markets
+ * A sophisticated automated value investing system supporting Taiwan stock markets
  * with LLM-powered analysis and automated trading capabilities.
  */
 @SpringBootApplication
 @EnableScheduling
+@EnableRetry
 public class ValueInvestorBotApplication {
 
     public static void main(String[] args) {
