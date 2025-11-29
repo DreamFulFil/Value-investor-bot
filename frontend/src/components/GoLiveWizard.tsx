@@ -78,7 +78,7 @@ export function GoLiveWizard({ isOpen, onClose, currentBacktestValue, onGoLive }
       } else {
         setError(result.message);
       }
-    } catch (e) {
+    } catch {
       setError(isZhTW ? '啟用失敗，請稍後再試' : 'Failed to activate. Please try again.');
     } finally {
       setIsSubmitting(false);

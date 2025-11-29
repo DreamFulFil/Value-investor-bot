@@ -128,15 +128,18 @@ function Dashboard() {
   const hasEverGoneLive = appConfig?.hasEverGoneLive ?? false;
 
   // Show LIVE mode startup toast
-  const [showLiveToast, setShowLiveToast] = useState(false);
+  const [showLiveToast, setShowLiveToast] = useState(() => false);
   
   // Show LIVE mode toast on mount if in LIVE mode
   useEffect(() => {
-    if (isLiveMode) {
-      setShowLiveToast(true);
-      const timer = setTimeout(() => setShowLiveToast(false), 5000);
+    if (isLiveMode && !showLiveToast) {
+      const timer = setTimeout(() => {
+        setShowLiveToast(true);
+        setTimeout(() => setShowLiveToast(false), 5000);
+      }, 100);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveMode]);
 
   return (
