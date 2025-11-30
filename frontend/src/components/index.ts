@@ -10,3 +10,6 @@ export { GoLiveWizard } from './GoLiveWizard';
 export { QuotaCard } from './QuotaCard';
 export { ProgressModal } from './ProgressModal';
 export { SimulationBadge } from './SimulationBadge';
+export { BacktestChart } from './BacktestChart';
+export { SettingsModal } from './SettingsModal';
+export { MarketToggle } from './MarketToggle';

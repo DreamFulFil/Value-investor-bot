@@ -256,9 +256,24 @@ export const checkHealth = async (): Promise<boolean> => {
   }
 };
 
+export const getTradingConfig = async (): Promise<any> => {
+  const { data } = await api.get('/config');
+  return data;
+};
+
+export const saveTradingConfig = async (config: any): Promise<any> => {
+  const { data } = await api.post('/config', config);
+  return data;
+};
+
 // SSE helper for progress updates
 export const createProgressEventSource = (): EventSource => {
   return new EventSource('/api/trading/rebalance/progress');
+};
+
+export const getBacktestChartData = async () => {
+  const { data } = await api.get('/backtest/chart');
+  return data;
 };
 
 export default api;

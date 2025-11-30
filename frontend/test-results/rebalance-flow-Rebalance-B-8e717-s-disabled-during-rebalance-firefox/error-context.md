@@ -1,0 +1,164 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e9]: 📈
+          - generic [ref=e10]:
+            - heading "價值投資機器人" [level=1] [ref=e11]
+            - paragraph [ref=e12]: 台灣版
+        - generic [ref=e13]:
+          - button "中文" [ref=e14] [cursor=pointer]
+          - button "Toggle dark mode" [ref=e15] [cursor=pointer]:
+            - img [ref=e16]
+    - main [ref=e18]:
+      - generic [ref=e20]: 模擬模式
+      - generic [ref=e22]:
+        - button "📊 立即執行月度再平衡" [ref=e23] [cursor=pointer]:
+          - generic [ref=e25]: 📊 立即執行月度再平衡
+        - button "開始真實投資 →" [ref=e27] [cursor=pointer]
+      - generic [ref=e28]:
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - paragraph [ref=e32]: 投資組合價值
+            - paragraph [ref=e33]: $15,374
+            - generic [ref=e34]:
+              - img [ref=e35]
+              - text: 0.00%
+          - img [ref=e38]
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - paragraph [ref=e43]: 總報酬
+            - paragraph [ref=e44]: $0
+            - generic [ref=e45]:
+              - img [ref=e46]
+              - text: 0.00%
+          - img [ref=e49]
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - paragraph [ref=e54]: 股息收入
+            - paragraph [ref=e55]: $0
+            - paragraph [ref=e56]: "上次再平衡: 11/30/2025"
+          - img [ref=e58]
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - paragraph [ref=e63]: 現金餘額
+            - paragraph [ref=e64]: $0
+          - img [ref=e66]
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: API 配額
+            - img [ref=e72]
+          - generic [ref=e75]: 21 / 500 MB
+          - generic [ref=e79]: 479 MB 剩餘
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - heading "投資組合表現" [level=3] [ref=e82]
+          - application [ref=e86]:
+            - generic [ref=e123]:
+              - generic [ref=e126]: 2025-11-27T20:29:38.537
+              - generic [ref=e127]:
+                - generic [ref=e129]: "0"
+                - generic [ref=e131]: 4K
+                - generic [ref=e133]: 8K
+                - generic [ref=e135]: 12K
+                - generic [ref=e137]: 16K
+        - generic [ref=e138]:
+          - heading "資產配置" [level=3] [ref=e139]
+          - generic [ref=e142]:
+            - list [ref=e144]:
+              - listitem [ref=e145]:
+                - img "[object Object] legend icon" [ref=e146]
+                - generic [ref=e148]: 2002.TW
+              - listitem [ref=e149]:
+                - img "[object Object] legend icon" [ref=e150]
+                - generic [ref=e152]: 2303.TW
+              - listitem [ref=e153]:
+                - img "[object Object] legend icon" [ref=e154]
+                - generic [ref=e156]: 2317.TW
+              - listitem [ref=e157]:
+                - img "[object Object] legend icon" [ref=e158]
+                - generic [ref=e160]: 2886.TW
+              - listitem [ref=e161]:
+                - img "[object Object] legend icon" [ref=e162]
+                - generic [ref=e164]: 5880.TW
+            - application [ref=e165]
+      - generic [ref=e179]:
+        - generic [ref=e181]:
+          - heading "前五大持股" [level=3] [ref=e182]
+          - table [ref=e184]:
+            - rowgroup [ref=e185]:
+              - row "代號 名稱 股數 市值 權重" [ref=e186]:
+                - columnheader "代號" [ref=e187]
+                - columnheader "名稱" [ref=e188]
+                - columnheader "股數" [ref=e189]
+                - columnheader "市值" [ref=e190]
+                - columnheader "權重" [ref=e191]
+            - rowgroup [ref=e192]:
+              - row "2002.TW 2002.TW 170.667 NT$3,097.6 20.1%" [ref=e193]:
+                - cell "2002.TW" [ref=e194]
+                - cell "2002.TW" [ref=e195]
+                - cell "170.667" [ref=e196]
+                - cell "NT$3,097.6" [ref=e197]
+                - cell "20.1%" [ref=e198]:
+                  - generic [ref=e199]: 20.1%
+              - row "2303.TW 2303.TW 68.522 NT$3,117.773 20.3%" [ref=e200]:
+                - cell "2303.TW" [ref=e201]
+                - cell "2303.TW" [ref=e202]
+                - cell "68.522" [ref=e203]
+                - cell "NT$3,117.773" [ref=e204]
+                - cell "20.3%" [ref=e205]:
+                  - generic [ref=e206]: 20.3%
+              - row "2317.TW 2317.TW 12.284 NT$2,806.91 18.3%" [ref=e207]:
+                - cell "2317.TW" [ref=e208]
+                - cell "2317.TW" [ref=e209]
+                - cell "12.284" [ref=e210]
+                - cell "NT$2,806.91" [ref=e211]
+                - cell "18.3%" [ref=e212]:
+                  - generic [ref=e213]: 18.3%
+              - row "2886.TW 2886.TW 77.67 NT$3,137.864 20.4%" [ref=e214]:
+                - cell "2886.TW" [ref=e215]
+                - cell "2886.TW" [ref=e216]
+                - cell "77.67" [ref=e217]
+                - cell "NT$3,137.864" [ref=e218]
+                - cell "20.4%" [ref=e219]:
+                  - generic [ref=e220]: 20.4%
+              - row "5880.TW 5880.TW 134.737 NT$3,213.474 20.9%" [ref=e221]:
+                - cell "5880.TW" [ref=e222]
+                - cell "5880.TW" [ref=e223]
+                - cell "134.737" [ref=e224]
+                - cell "NT$3,213.474" [ref=e225]
+                - cell "20.9%" [ref=e226]:
+                  - generic [ref=e227]: 20.9%
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - heading "每週股息目標" [level=3] [ref=e230]
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - img [ref=e233]
+                - generic [ref=e236]:
+                  - generic [ref=e237]: 0%
+                  - generic [ref=e238]: 目標達成
+              - generic [ref=e239]:
+                - paragraph [ref=e240]: NT$0 / NT$1,600
+                - paragraph [ref=e241]: NT$1,600/週
+          - generic [ref=e242]:
+            - heading "🤖 最新 AI 洞察" [level=3] [ref=e243]:
+              - generic [ref=e244]: 🤖
+              - text: 最新 AI 洞察
+            - paragraph [ref=e245]: 執行首次再平衡以獲得 AI 投資建議
+    - contentinfo [ref=e246]:
+      - paragraph [ref=e247]: Value Investor Bot - Taiwan Edition © 2025
+    - generic [ref=e249]:
+      - heading "✅再平衡中..." [level=2] [ref=e251]
+      - generic [ref=e255]: 100%
+      - generic [ref=e258]: Portfolio updated successfully!
+      - generic [ref=e261]:
+        - generic [ref=e262]: "[01]"
+        - text: Portfolio updated successfully!
+      - button "完成" [ref=e264] [cursor=pointer]
+  - generic [ref=e265]: 4K
+```

@@ -14,6 +14,8 @@ import {
   QuotaCard,
   ProgressModal,
   SimulationBadge,
+  BacktestChart,
+  SettingsModal,
 } from './components';
 import {
   fetchPortfolioSummary,
@@ -47,6 +49,7 @@ function Dashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [showGoLiveWizard, setShowGoLiveWizard] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const { data: summary } = useQuery({
     queryKey: ['portfolioSummary'],
@@ -144,7 +147,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Header />
+      <Header onOpenSettings={() => setShowSettingsModal(true)} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Trading Mode Badge */}
@@ -191,27 +194,30 @@ function Dashboard() {
           {rebalanceMutation.isError && (
             <p className="text-center text-red-500 mt-2 text-sm">
               {t('error')}: {(rebalanceMutation.error as Error).message}
-            </p>
-          )}
-          
-          {/* Go Live Button - HIDDEN once LIVE mode is activated */}
-          {!hasEverGoneLive && hasRebalanced && summary && summary.totalValue > 0 && (
-            <div className="text-center mt-4">
-              <button
-                onClick={() => setShowGoLiveWizard(true)}
-                className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-              >
-                {t('goLive')} →
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <StatCard
-            title={t('portfolioValue')}
-            value={summary?.totalValue ?? 0}
-            trend={summary?.returnPercentage}
+                      </p>
+                    )}
+                    
+                    {/* Go Live Button - HIDDEN once LIVE mode is activated */}
+                    {!hasEverGoneLive && hasRebalanced && summary && summary.totalValue > 0 && (
+                      <div className="text-center mt-4">
+                        <button
+                          onClick={() => setShowGoLiveWizard(true)}
+                          className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                          {t('goLive')} →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+            
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                      <BacktestChart />
+                  </div>
+            
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <StatCard
+                      title={t('portfolioValue')}
+                      value={summary?.totalValue ?? 0}            trend={summary?.returnPercentage}
             isEmpty={isEmpty}
             icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
@@ -280,6 +286,12 @@ function Dashboard() {
       <ProgressModal
         isOpen={showProgressModal}
         onClose={handleProgressModalClose}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
       />
     </div>
   );

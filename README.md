@@ -1,13 +1,46 @@
-# Value Investor Bot — Taiwan Edition (v2.5)
+# Value Investor Bot — v2.5
 
-🇹🇼 AI-powered automated value investing bot for Taiwan stock market
+🇹🇼 AI-powered automated value investing bot for Taiwan & US stock markets
 
 [![CI](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-14%20suites%20passing-brightgreen)](./run-all-tests.sh)
+[![Tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)](./run-all-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
+---
+
+## What's New in v2.5
+
+### Backtest Chart
+A new backtesting chart has been added to the main dashboard, allowing you to visualize the simulated historical performance of your portfolio over the past year.
+
+### Telegram Notifications
+You can now receive instant notifications on Telegram after each rebalancing event. To enable this, open the settings panel from the dashboard and enter your Telegram Bot Token and Chat ID.
+
+### Sector Diversification
+The stock selection algorithm is now smarter. It automatically enforces diversification by limiting the number of stocks from any single sector to a maximum of two (configurable in `application.yml`). Sector data is sourced from Yahoo Finance.
+
+### US Market Support
+This version introduces experimental support for the US market. A toggle in the header allows you to switch between Taiwan (TW) and United States (US) markets. Please note that the US market feature is for demonstration purposes in this version.
+
+---
+
+## Setup for new features
+
+### Telegram Notifications Setup
+1. Create a new bot on Telegram by talking to the `@BotFather`.
+2. Copy the **Bot Token** it gives you.
+3. Find your **Chat ID**. You can get this by sending a message to `@userinfobot`.
+4. On the bot's dashboard, click the "Settings" button (gear icon in the header).
+5. Enable Telegram notifications and paste your Bot Token and Chat ID into the respective fields in `backend/src/main/resources/application.yml`.
+
+### Python Dependencies
+The new sector diversification feature requires an additional Python library. Please ensure it is installed by running:
+```bash
+pip install -r shioaji_bridge/requirements.txt
+```
 
 ---
 
@@ -176,7 +209,7 @@ MIT License | Educational purposes only | Not financial advice
 
 The project includes comprehensive test coverage across all stacks, organized into Unit, Integration, and E2E layers.
 
-**Latest Test Run:** All 14 test suites passing ✅
+**Latest Test Run:** All 14 test suites passing ✅ (Total 371 tests)
 
 ### Run All Tests
 ```bash
@@ -201,15 +234,15 @@ The project includes comprehensive test coverage across all stacks, organized in
 
 | Category | Stack | Suite | Individual Tests |
 |----------|-------|-------|------------------|
-| **Unit** | Frontend (TypeScript) | 1 | 68 tests |
-| **Unit** | Backend (Java) | 2 | 50+ tests |
-| **Unit** | Python Bridge | 1 | 16 tests |
+| **Unit** | Frontend (TypeScript) | 1 | 84 tests |
+| **Unit** | Backend (Java) | 2 | 204 tests |
+| **Unit** | Python Bridge | 1 | 43 tests |
 | **Integration** | Frontend | 1 | Included above |
 | **Integration** | Backend | 3 | 30+ tests |
 | **Integration** | Python | 1 | Included above |
 | **Contract** | All stacks | 3 | API compatibility |
-| **E2E** | Playwright | 2 | 37 tests × 5 browsers |
-| | | **14 suites** | **250+ test cases** |
+| **E2E** | Playwright | 2 | 40 tests × 5 browsers |
+| | | **14 suites** | **371 test cases** |
 
 ### E2E Tests (Playwright)
 

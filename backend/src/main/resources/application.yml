@@ -36,5 +36,11 @@ shioaji:
 
 # Stock universe configuration
 app:
-  stock-universe:
-    initial-size: 50
+  shioaji-api-url: http://localhost:5000
+  telegram:
+    bot-token: YOUR_BOT_TOKEN # Replace with your Telegram bot token
+    chat-id: YOUR_CHAT_ID     # Replace with your Telegram chat ID
+
+investment:
+  max-stocks-per-sector: 2
+
