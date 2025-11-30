@@ -187,13 +187,44 @@ export DECRYPT_KEY
 # 2. Unit & Integration Tests (Non-E2E)
 # ─────────────────────────────────────────────────────────────────────────────
 
-if $RUN_UNIT; then
-    print_header "🧪 Unit Tests"
+# --- Backend Build & Test ---
+if $RUN_UNIT || $RUN_INTEGRATION; then
+    print_header "📦🧪 Backend Build & Test (Java/Maven)"
     cd "$SCRIPT_DIR/backend"
-    run_test "Backend Unit Tests" "mvn test -Dtest='*ServiceTest,*UtilTest'" "unit" || true
+    
+    print_step "Compiling and installing backend to local Maven repository..."
+    if ! mvn clean install -DskipTests=true -B -q; then
+        print_error "Backend build failed. Running with full output..."
+        mvn clean install -DskipTests=true -B
+        exit 1
+    fi
+    print_success "Backend built and installed successfully."
+
+    if $RUN_UNIT; then
+        run_test "Backend Unit Tests" "mvn test -Dtest='*ServiceTest,*UtilTest'" "unit" || true
+    fi
+    if $RUN_INTEGRATION; then
+        run_test "Backend Integration Tests" "mvn test -Dtest='*ControllerTest,*RepositoryTest,*IntegrationTest,ApiContractTest'" "integration" || true
+    fi
+fi
+
+# --- Frontend Tests ---
+if $RUN_UNIT; then
+    print_header "🧪 Frontend Unit Tests"
     cd "$SCRIPT_DIR/frontend"
     if [ ! -d "node_modules" ]; then print_step "Installing frontend dependencies..."; npm install; fi
     run_test "Frontend Unit Tests" "npm test -- --run" "unit" || true
+fi
+if $RUN_INTEGRATION; then
+    print_header "🔗 Frontend Integration & Contract Tests"
+    cd "$SCRIPT_DIR/frontend"
+    if [ ! -d "node_modules" ]; then print_step "Installing frontend dependencies..."; npm install; fi
+    run_test "Frontend Integration Tests" "npm test -- --run src/__tests__/integration.test.ts src/__tests__/contract/api-contract.test.ts" "integration" || true
+fi
+
+# --- Python Bridge Tests ---
+if $RUN_UNIT; then
+    print_header "🧪 Python Bridge Unit Tests"
     cd "$SCRIPT_DIR/shioaji_bridge"
     if [ ! -d "venv" ]; then print_step "Creating Python venv..."; python3 -m venv venv; fi
     source venv/bin/activate
@@ -201,14 +232,8 @@ if $RUN_UNIT; then
     run_test "Python Bridge Unit Tests" "pytest tests/test_shioaji*.py" "unit" || true
     deactivate
 fi
-
 if $RUN_INTEGRATION; then
-    print_header "🔗 Integration Tests"
-    cd "$SCRIPT_DIR/backend"
-    run_test "Backend Integration Tests" "mvn test -Dtest='*ControllerTest,*RepositoryTest,*IntegrationTest,ApiContractTest'" "integration" || true
-    cd "$SCRIPT_DIR/frontend"
-    if [ ! -d "node_modules" ]; then print_step "Installing frontend dependencies..."; npm install; fi
-    run_test "Frontend Integration Tests" "npm test -- --run src/__tests__/integration.test.ts src/__tests__/contract/api-contract.test.ts" "integration" || true
+    print_header "🔗 Python Bridge Integration & Contract Tests"
     cd "$SCRIPT_DIR/shioaji_bridge"
     source venv/bin/activate
     run_test "Python Bridge Integration Tests" "pytest tests/test_integration.py tests/test_contracts.py" "integration" || true
