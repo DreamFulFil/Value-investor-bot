@@ -38,3 +38,8 @@ shioaji:
 app:
   stock-universe:
     initial-size: 50
+  # Rebalance auto-run controls
+  # When true, the scheduler will automatically attempt the monthly rebalance on the
+  # 1st trading day at 09:00 Asia/Taipei. Defaults to true for LIVE and false for SIMULATION.
+  rebalance:
+    auto-enabled: ${APP_REBALANCE_AUTO_ENABLED:}

@@ -1,10 +1,10 @@
 package com.valueinvestor.service;
 
+import com.valueinvestor.config.ShioajiProperties;
 import com.valueinvestor.model.entity.StockPriceHistory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
@@ -24,14 +24,14 @@ import static org.mockito.Mockito.*;
 class ShioajiDataServiceTest {
 
     @Mock
-    private RestTemplate restTemplate;
+    private ShioajiProperties shioajiProperties;
 
-    @InjectMocks
     private ShioajiDataService shioajiDataService;
 
     @BeforeEach
     void setUp() {
-        // Set up test environment
+        when(shioajiProperties.getApiUrl()).thenReturn("http://localhost:8888");
+        shioajiDataService = new ShioajiDataService(shioajiProperties);
     }
 
     @Test

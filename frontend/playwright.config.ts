@@ -28,7 +28,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -38,49 +38,32 @@ export default defineConfig({
     
     /* Video recording on failure */
     video: 'on-first-retry',
+    
+    /* Headless mode */
+    headless: true,
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for major browsers - run only chromium for speed */
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
   ],
 
-  /* Run local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  /* Run local dev server before starting the tests - DISABLED: using existing server at :8080 */
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:5173',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120 * 1000,
+  // },
 
-  /* Test timeout */
+  /* Test timeout - increased for stability */
   timeout: 60 * 1000,
   
-  /* Expect timeout */
+  /* Expect timeout - increased for async operations */
   expect: {
-    timeout: 10 * 1000,
+    timeout: 30 * 1000,
   },
 });

@@ -4,6 +4,7 @@ import com.valueinvestor.model.entity.TransactionLog;
 import com.valueinvestor.repository.TransactionLogRepository;
 import com.valueinvestor.service.ProgressService;
 import com.valueinvestor.service.RebalanceService;
+import com.valueinvestor.service.TradingConfigService;
 import com.valueinvestor.service.TradingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,9 @@ class TradingControllerTest {
     
     @MockBean
     private ProgressService progressService;
+    
+    @MockBean
+    private TradingConfigService tradingConfigService;
 
     @Test
     void should_getTradingStatus_when_requested() throws Exception {

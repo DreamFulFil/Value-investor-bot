@@ -1,103 +1,79 @@
-# User-Level Claude Code Instructions
+# Universal Copilot / Claude Code Instructions
 
-## Shell Tools Usage Guidelines
-⚠️ **IMPORTANT**: Use the following specialized tools instead of traditional Unix commands: (Install if missing)
-| Task Type | Must Use | Do Not Use |
-|-----------|----------|------------|
-| Find Files | `fd` | `find`, `ls -R` |
-| Search Text | `rg` (ripgrep) | `grep`, `ag` |
-| Analyze Code Structure | `ast-grep` | `grep`, `sed` |
-| Interactive Selection | `fzf` | Manual filtering |
-| Process JSON | `jq` | `python -m json.tool` |
-| Process YAML/XML | `yq` | Manual parsing |
+You are an expert full-stack engineer (Java 21 + Spring Boot, React + TypeScript + Vite, Python).  
+Be precise, surgical, and extremely token-efficient.
 
-## File Reading Efficiency
-⚠️ **IMPORTANT**: When given specific line numbers to modify:
-- **DO NOT** read entire files unnecessarily
-- **DO** use targeted reads with `offset` and `limit` parameters around the specified line numbers
-- **ONLY** read the full file if broader context is genuinely required
-- Trust the provided line numbers - be surgical, not exploratory
+## Core Rules — Never Break These
 
-## Code Compilation Verification
-⚠️ **IMPORTANT**: When all tasks are completed:
-- **DO** run the appropriate build/compile command to verify all changes compile successfully
-- **DO** fix any compilation errors before marking work as complete
-- For Java projects: Use `mvn compile` or `mvn clean compile`
-- For JavaScript/React projects: Use `npm run build` or equivalent
-- Never consider a task fully complete without compilation verification
+### 1. Imports First (Non-Negotiable)
+- Add every required import in the same edit where the symbol is first used
+- Never write code that references undefined classes/types
+- Common Java imports to add instantly:  
+  `java.io.*`, `java.nio.file.*`, `java.time.*`, `java.util.stream.*`, `StandardCharsets`, Lombok/Spring annotations
 
-## Import Statement Management
-🚨 **CRITICAL - DO NOT SKIP**: Add imports IMMEDIATELY when making code changes:
-- **NEVER** add code using new classes without adding the corresponding import statements FIRST
-- **ALWAYS** add imports in the SAME edit where you introduce new class usage
-- **DO NOT** defer import additions to later - this wastes massive amounts of tokens on compilation errors
-- When adding code that uses: ByteArrayOutputStream, FileOutputStream, InputStream, StandardCharsets, or any utility class → ADD THE IMPORT IMMEDIATELY
-- Check BOTH standard library imports (java.io.*, java.nio.charset.*) AND project-specific imports (custom converters, utilities)
-- Forgetting imports means wasting tokens on:
-  1. Failed compilation
-  2. Reading error messages
-  3. Re-reading files to add imports
-  4. Re-compilation
-- **This is extremely wasteful - add imports when you write the code, not after it fails to compile**
+### 2. Targeted File Reads
+- When line numbers are provided, read only ±30 lines around them (offset + limit)
+- Only read entire files when genuinely needed for context
 
-## Testing Requirements
-🚨 **CRITICAL**: Always check all unit and integration tests pass before you commit
-- Run `mvn test` for Java backend tests
-- Run `npm test` for React frontend tests
-- Run `pytest` for Python bridge tests
-- All tests MUST pass before any commit is made
-- If tests fail, fix the issues before committing
+### 3. Always Build & Test Clean Before Completion
+- Java → `mvn compile` then `mvn test`
+- React/TypeScript → `npm run build` (or `vite build`)
+- Python → `pytest`
+- Never mark a task finished unless the project compiles cleanly and all tests pass
+
+### 4. Preferred Shell Tools (Use Only These)
+| Purpose               | Must Use    | Never Use             |
+|-----------------------|-------------|-----------------------|
+| Find files            | `fd`        | `find`, `ls -R`       |
+| Search text           | `rg`        | `grep`, `ag`          |
+| Code structure search | `ast-grep`  | regex/sed/grep        |
+| Fuzzy selection       | `fzf`       | manual listing        |
+| JSON processing       | `jq`        | python json.tool      |
+| YAML processing       | `yq`        | manual parsing        |
+
+### 5. Security
+- Never commit plaintext secrets, API keys, passwords, or decrypt keys
+- Sensitive values belong in encrypted config (Jasypt, .env + runtime decrypt, etc.)
+
+### 6. Java Version (Enforced in pom.xml)
+- All projects require and compile with exactly Java 21 via `<maven.compiler.release>21</maven.compiler.release>`
+- Never use `./mvnw`, `jenv`, or local JDK overrides — pom.xml guarantees Java 21 everywhere
+
+## Default Code Style
+- React: functional components + hooks only
+- TypeScript: strict mode, no `any`
+- Prefer named exports over default exports
+- Format with Prettier + ESLint
+- Commit messages follow Conventional Commits
 
 ---
 
-# Project-Specific Notes (Value Investor Bot - Taiwan Edition)
+## Project-Specific Section (replace or delete per repository)
 
-## Overview
-- Taiwan-focused value investing robo-advisor
-- Monthly NT$16,000 investment in high-dividend Taiwan stocks (.TW)
-- Target: NT$1,600/week passive income
+### Current Project: Value Investor Bot – Taiwan Edition
+- Strategy: Monthly NT$16,000 into high-dividend Taiwan stocks only
+- Target: ~NT$1,600/week passive income (long-term value, no day trading)
+
+### Tech Stack
 - Backend: Java 21 + Spring Boot 3.3
-- Frontend: React 18 + TypeScript + Vite + Tailwind
-- Python Bridge: Shioaji integration for Taiwan market data
-- LLM: Ollama (llama3.1:8b-instruct-q5_K_M) for insights ONLY - never for stock picking
+- Frontend: React 18 + TypeScript + Vite + Tailwind CSS
+- Market data bridge: Python + Shioaji → Yahoo Finance fallback → cached price
+- LLM: Ollama llama3.1:8b for insights only (never stock picking)
 
-## Taiwan Stock Symbols
-- TSE stocks: Use `.TW` suffix (e.g., `2330.TW` for TSMC)
-- OTC stocks: Use `.TWO` suffix (e.g., `2881.TWO`)
-- Strip suffix when calling Shioaji API, add back for storage
+### Critical Business Rules
+1. Rebalance exactly once per month and idempotent — block duplicates even with `force=true`
+2. Store symbols with suffix (`2330.TW`, `2881.TWO`); strip only for Shioaji API calls
+3. Screening: dividend yield > 2%, reasonable P/E & P/B, high ROE
 
-## Critical Business Rules
-1. **Rebalance Idempotency**: NEVER allow duplicate rebalances in same month
-   - Even with `force=true`, same-month rebalances are BLOCKED
-   - User must wait until next month
-2. **Price Fallback**: When fetching historical prices:
-   - Try Shioaji first
-   - Fall back to Yahoo Finance if Shioaji fails/quota exceeded
-   - Use most recent cached price as last resort
-3. **Stock Screening**: Use dividend yield > 2%, low P/E, low P/B, high ROE
-4. **No Day Trading**: Monthly rebalance only, boring value strategy
+### Rate Limits
+- Shioaji ≤ 500 MB/day
+- Yahoo Finance ~200 req/hour → add delays on fallback
 
-## API Quotas
-- Shioaji: 500MB/day for non-real-transaction accounts
-- Yahoo Finance: ~100-250 requests/hour soft limit
-- Add delays between requests to avoid rate limits
-
-## Security
-- NEVER commit API keys, passwords, or decrypt keys
-- Use jasypt encryption for sensitive values in .env
-- Decrypt key passed at runtime: `./run.sh <decrypt_key>`
-
-## Common Commands
+### Common Commands
 ```bash
-./run.sh <key>    # Start with decrypt key
-./run.sh stop     # Stop all services
-./run.sh reset    # Reset database, clean start
-./run.sh status   # Check service status
-```
-
-## Test Commands
-```bash
-cd backend && mvn test                    # Java tests
-cd frontend && npm test                   # React tests  
-cd shioaji_bridge && python -m pytest     # Python tests
-```
+./run.sh <decrypt_key>   # start all services
+./run.sh stop            # stop
+./run.sh reset           # clean DB + restart
+mvn test                 # backend tests
+npm test                 # frontend tests
+pytest                   # Python bridge tests

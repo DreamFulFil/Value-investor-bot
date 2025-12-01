@@ -174,44 +174,68 @@ MIT License | Educational purposes only | Not financial advice
 
 ## Testing
 
-The project includes comprehensive test coverage across all stacks, organized into Unit, Integration, and E2E layers.
+Comprehensive test coverage with zero-config automation: no manual service setup required.
 
-**Latest Test Run:** All 14 test suites passing ✅
+### Quick Start
 
-### Run All Tests
 ```bash
-# Start services first (required for E2E tests)
-./run.sh <decrypt_key>
+# Fast mode (3 minutes) — No services needed
+./run-all-tests.sh --quick
 
-# Run all tests
+# Full mode (8 minutes) — Auto-starts services, runs E2E
+./run.sh dreamfulfil --detached    # Start services first
+./run-all-tests.sh                 # Runs all tests including E2E
+```
+
+### How It Works
+
+**Quick Mode (`--quick`):**
+- Runs unit + integration tests only
+- No services required
+- Perfect for TDD workflow
+- ~3 minutes
+
+**Full Mode (default):**
+- Auto-detects if services are running
+- Auto-starts services if needed (with cleanup trap)
+- Runs all tests: unit + integration + E2E (Playwright headless)
+- Auto-stops services on exit/failure/Ctrl+C
+- ~8 minutes
+
+### Password Handling
+
+**Local Development:**
+```bash
+# Services use command-line password
+./run.sh dreamfulfil --detached
+
+# Tests auto-detect running services
 ./run-all-tests.sh
 ```
 
-### Test Options
+**GitHub Actions CI:**
 ```bash
-./run-all-tests.sh              # Run all tests (Unit + Integration + E2E)
-./run-all-tests.sh --quick      # Skip E2E tests (faster)
-./run-all-tests.sh --unit       # Run only unit tests
-./run-all-tests.sh --integration # Run only integration tests
-./run-all-tests.sh --e2e        # Run only E2E browser tests
-./run-all-tests.sh --verbose    # Show detailed output
+export JASYPT_PASSWORD=${{ secrets.JASYPT_PASSWORD }}
+./run.sh --detached
+./run-all-tests.sh
 ```
 
-### Test Breakdown
+The test runner automatically:
+- Uses `jenv` to enforce Java 21
+- Creates Python venv if missing
+- Installs Playwright browsers if missing
+- Waits up to 90s for services to be ready
 
-| Category | Stack | Suite | Individual Tests |
-|----------|-------|-------|------------------|
-| **Unit** | Frontend (TypeScript) | 1 | 68 tests |
-| **Unit** | Backend (Java) | 2 | 50+ tests |
-| **Unit** | Python Bridge | 1 | 16 tests |
-| **Integration** | Frontend | 1 | Included above |
-| **Integration** | Backend | 3 | 30+ tests |
-| **Integration** | Python | 1 | Included above |
-| **Contract** | All stacks | 3 | API compatibility |
-| **E2E** | Playwright | 2 | 37 tests × 5 browsers |
-| | | **14 suites** | **250+ test cases** |
+### Test Suites
 
-### E2E Tests (Playwright)
+| Suite | Count | Runtime |
+|-------|-------|---------|
+| Java Unit + Integration | 181 tests | ~90s |
+| Python Unit + Integration | 71 tests | ~5s |
+| Playwright E2E | 37 scenarios | ~60s |
+| **Total** | **289 tests** | **3-8 min** |
+
+All tests must pass before committing. CI enforces this.
 
 Browser automation tests covering critical user journeys:
 
