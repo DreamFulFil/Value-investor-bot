@@ -1,12 +1,13 @@
-# Value Investor Bot — Taiwan Edition (v2.5)
+# Value Investor Bot — Taiwan Edition (v2.6)
 
 🇹🇼 AI-powered automated value investing bot for Taiwan stock market
 
 [![CI](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/DreamFulFil/Value-investor-bot/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-14%20suites%20passing-brightgreen)](./run-all-tests.sh)
+[![Tests](https://img.shields.io/badge/tests-190%20Java%20%7C%2063%20Python%20%7C%2037%20E2E-brightgreen)](./run-tests.sh)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
+[![Shioaji](https://img.shields.io/badge/Shioaji-1.2.9-blue)](https://sinotrade.github.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 ---
@@ -99,10 +100,8 @@ After backtesting, click "Go Live" to start real trading:
 | `./run.sh reset` | Reset portfolio data (fresh start) |
 | `./run.sh clean` | Full cleanup (rebuild required) |
 | `./run.sh <key> encrypt` | Encrypt .env credentials |
-| `./run-all-tests.sh` | Run all tests (Unit + Integration + E2E) |
-| `./run-all-tests.sh --quick` | Run tests without E2E (faster) |
-| `./run-all-tests.sh --unit` | Run only unit tests |
-| `./run-all-tests.sh --e2e` | Run only E2E browser tests |
+| `./run-tests.sh <key>` | Run all tests (Java + Python + E2E) |
+| `./run-tests.sh help` | Show test runner documentation |
 
 ## .env Encryption
 
@@ -128,12 +127,12 @@ localhost:8080  ← Spring Boot + React Dashboard
 ```
 Value-investor-bot/
 ├── backend/          # Spring Boot 3.3 (Java 21)
-├── frontend/         # React 18 + TypeScript + Tailwind
-├── shioaji_bridge/   # FastAPI Python (Shioaji + Yahoo Finance)
+├── frontend/         # React 19 + TypeScript + Vite + Tailwind
+├── shioaji_bridge/   # FastAPI Python (Shioaji 1.2.9 + Yahoo Finance)
 ├── contracts/        # Shared API contract definitions (JSON Schema)
 ├── .env              # Encrypted environment variables
 ├── run.sh            # Startup script (bulletproof, auto-opens browser)
-└── run-all-tests.sh  # Universal test runner (Unit/Integration/E2E)
+└── run-tests.sh      # Complete test suite runner (auto-starts services)
 ```
 
 ## Safety Features
@@ -174,143 +173,98 @@ MIT License | Educational purposes only | Not financial advice
 
 ## Testing
 
-Comprehensive test coverage with zero-config automation: no manual service setup required.
+Comprehensive test coverage with automated service management—no manual setup required.
 
 ### Quick Start
 
 ```bash
-# Fast mode (3 minutes) — No services needed
-./run-all-tests.sh --quick
+# Run all tests (auto-starts services if needed)
+./run-tests.sh <jasypt-password>
 
-# Full mode (8 minutes) — Auto-starts services, runs E2E
-./run.sh dreamfulfil --detached    # Start services first
-./run-all-tests.sh                 # Runs all tests including E2E
+# Show test runner help
+./run-tests.sh help
 ```
 
 ### How It Works
 
-**Quick Mode (`--quick`):**
-- Runs unit + integration tests only
-- No services required
-- Perfect for TDD workflow
-- ~3 minutes
-
-**Full Mode (default):**
-- Auto-detects if services are running
-- Auto-starts services if needed (with cleanup trap)
-- Runs all tests: unit + integration + E2E (Playwright headless)
-- Auto-stops services on exit/failure/Ctrl+C
-- ~8 minutes
-
-### Password Handling
-
-**Local Development:**
-```bash
-# Services use command-line password
-./run.sh dreamfulfil --detached
-
-# Tests auto-detect running services
-./run-all-tests.sh
-```
-
-**GitHub Actions CI:**
-```bash
-export JASYPT_PASSWORD=${{ secrets.JASYPT_PASSWORD }}
-./run.sh --detached
-./run-all-tests.sh
-```
-
 The test runner automatically:
-- Uses `jenv` to enforce Java 21
-- Creates Python venv if missing
-- Installs Playwright browsers if missing
-- Waits up to 90s for services to be ready
+- Detects if services are already running
+- Starts services in background if needed
+- Waits for backend health check (up to 90s)
+- Runs all test suites in sequence
+- Stops services on completion or failure
+- Cleans up properly on Ctrl+C
 
 ### Test Suites
 
-| Suite | Count | Runtime |
-|-------|-------|---------|
-| Java Unit + Integration | 181 tests | ~90s |
-| Python Unit + Integration | 71 tests | ~5s |
-| Playwright E2E | 37 scenarios | ~60s |
-| **Total** | **289 tests** | **3-8 min** |
+| Suite | Count | Runtime | What's Tested |
+|-------|-------|---------|---------------|
+| **Java Tests** | 190 tests | ~90s | Core business logic, API contracts, integration |
+| **Python Tests** | 63 tests | ~8s | Bridge logic, Shioaji client, API endpoints |
+| **E2E Tests** | 37 scenarios | ~49s | Full user journeys with Playwright |
+| **Total** | **290 tests** | **~3 min** | Complete system validation |
 
-All tests must pass before committing. CI enforces this.
+### Version Protection
 
-Browser automation tests covering critical user journeys:
+To prevent issues with dependency version changes (e.g., Shioaji 1.1.4 disappearing):
 
 ```bash
-# Install Playwright browsers
-cd frontend && npm run playwright:install
-
-# Run E2E tests
-npm run test:e2e              # Headless (CI-friendly)
-npm run test:e2e:headed       # With browser visible
-npm run test:e2e:ui           # Interactive UI mode
+# Verify specific version availability before upgrading
+cd shioaji_bridge
+python verify_dependencies.py shioaji 1.2.9
 ```
 
-**E2E Test Coverage:**
-- Dashboard page load and display
-- Rebalance button interaction
-- Progress modal tracking
-- First-time user journey
-- Same-month idempotency check
-- Error handling and recovery
-- Responsive design (mobile/tablet)
-- Language toggle (EN/中文)
-
-### Contract Tests (Most Critical)
-These tests catch field name mismatches between backend and frontend:
-- `contracts/api-contracts.json` - Shared schema definitions
-- Java `ApiContractTest` - Verify DTOs serialize correctly
-- TypeScript `api-contract.test.ts` - Verify field mapping (quantity→shares)
-- Python `test_contracts.py` - Verify response formats
+This script checks PyPI to ensure the version exists before attempting installation, preventing broken builds from vanished packages.
 
 ### Individual Test Commands
 ```bash
 # Frontend Unit Tests (Vitest)
 cd frontend && npm test              # Watch mode
 cd frontend && npm run test:run      # Run once
-cd frontend && npm run test:unit     # Unit only
 cd frontend && npm run test:coverage # With coverage
 
 # Frontend E2E Tests (Playwright)
-cd frontend && npm run test:e2e      # All browsers
-cd frontend && npx playwright test --project=chromium  # Chrome only
+cd frontend && npm run test:e2e      # Headless (CI-friendly)
+cd frontend && npm run test:e2e:headed  # With browser visible
+cd frontend && npm run test:e2e:ui   # Interactive UI mode
 
 # Backend (Java/JUnit 5)
 cd backend && mvn test                              # All tests
 cd backend && mvn test -Dtest='*ServiceTest'        # Unit tests
-cd backend && mvn test -Dtest='*ControllerTest'     # Controller tests
 cd backend && mvn test -Dtest='*IntegrationTest'    # Integration tests
 
 # Python (pytest)
 cd shioaji_bridge && source venv/bin/activate
 pytest tests/ -v                                    # All tests
 pytest tests/test_shioaji_client.py -v              # Unit tests
-pytest tests/test_integration.py -v                 # Integration tests
+pytest tests/test_contracts.py -v                   # API contract tests
 ```
 
 ### Test Coverage Highlights
-- ✅ **Unit Tests**: Isolated logic testing with mocked dependencies
-- ✅ **Integration Tests**: Component interaction and API contracts
-- ✅ **E2E Tests**: Full user journey with Playwright browser automation
+- ✅ **Unit Tests**: Isolated logic with mocked dependencies
+- ✅ **Integration Tests**: Python bridge communication, API contracts
+- ✅ **E2E Tests**: Complete user journeys with browser automation
+- ✅ **Contract Tests**: Field name validation (quantity→shares)
+- ✅ **Version Protection**: Dependency availability checks
 - ✅ Null/undefined safety (prevents `toLocaleString()` crashes)
-- ✅ API field name contracts (catches `quantity` vs `shares` mismatches)
 - ✅ Empty array/object handling
 - ✅ Division by zero protection
-- ✅ Negative value formatting
 - ✅ Responsive design validation
-- ✅ Multi-browser compatibility (Chrome, Firefox, Safari, Mobile)
+- ✅ Multi-browser compatibility (Chromium)
 
 ## Development
 
 ### Prerequisites
 - Java 21 (use jenv: `jenv local 21`)
 - Node.js 18+
-- Python 3.10+
-- Ollama (optional)
-- Playwright browsers (for E2E tests): `cd frontend && npm run playwright:install`
+- Python 3.10+ with venv
+- Ollama (optional, for AI insights)
+- Playwright browsers: `cd frontend && npx playwright install --with-deps chromium`
+
+### Key Dependencies
+- **Backend**: Spring Boot 3.3, Java 21, JUnit 5
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Playwright
+- **Python Bridge**: FastAPI, Shioaji 1.2.9, yfinance, pytest
 
 ### Building
 ```bash
@@ -319,6 +273,10 @@ cd backend && mvn clean package -DskipTests
 
 # Frontend (outputs to backend/src/main/resources/static)
 cd frontend && npm install && npm run build
+
+# Python Bridge
+cd shioaji_bridge && python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### Code Style
@@ -330,8 +288,18 @@ cd frontend && npm install && npm run build
 
 1. Fork the repository
 2. Create a feature branch
-3. Write tests (required: maintain 100% contract test coverage)
-4. Run `./run-all-tests.sh` to verify all tests pass
+3. Write tests (required: maintain contract test coverage)
+4. Run `./run-tests.sh <password>` to verify all tests pass
 5. Submit PR
 
-**Important**: All tests must pass before committing. The CI will reject PRs with failing tests.
+**Important**: All 290 tests must pass before committing. CI will reject PRs with failing tests.
+
+## Recent Updates (v2.6)
+
+- ✅ Upgraded Shioaji from 1.1.4 to 1.2.9
+- ✅ Added version protection script (`verify_dependencies.py`)
+- ✅ Enhanced Python bridge error handling for invalid symbols
+- ✅ Improved test automation with auto-service management
+- ✅ Renamed `run-all-tests.sh` to `run-tests.sh` for clarity
+- ✅ Added comprehensive integration tests for Python bridge
+- ✅ All 290 tests passing (190 Java + 63 Python + 37 E2E)

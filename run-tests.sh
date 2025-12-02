@@ -140,17 +140,20 @@ else
     print_step "Services not detected, starting them now..."
     register_cleanup
     
-    # Determine password source
+    # Determine password source and start in background
     if [[ -n "${JASYPT_PASSWORD:-}" ]]; then
         print_step "Using JASYPT_PASSWORD from environment (CI mode)"
-        ./run.sh --detached
+        nohup ./run.sh "${JASYPT_PASSWORD}" > /tmp/value-investor-startup.log 2>&1 &
     elif [[ -n "${1:-}" ]]; then
         print_step "Using password from command line"
-        ./run.sh "$1" --detached
+        nohup ./run.sh "$1" > /tmp/value-investor-startup.log 2>&1 &
     else
         print_step "Attempting to start with default password"
-        ./run.sh dreamfulfil --detached
+        nohup ./run.sh dreamfulfil > /tmp/value-investor-startup.log 2>&1 &
     fi
+    
+    # Give services a moment to start
+    sleep 5
     
     SERVICES_STARTED=true
     

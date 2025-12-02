@@ -303,9 +303,14 @@ async def get_quote_yahoo(symbol: str) -> QuoteResponse:
         ticker = yf.Ticker(yahoo_symbol)
         info = ticker.info
         
+        # Check if symbol is valid (Yahoo returns minimal info for invalid symbols)
+        if not info or 'symbol' not in info or not info.get('regularMarketPrice') and not info.get('currentPrice'):
+            logger.warning(f"No valid data from Yahoo Finance for {symbol}")
+            return QuoteResponse(success=False, error=f"Failed to fetch quote: symbol not found or no data available")
+        
         price = info.get('regularMarketPrice') or info.get('currentPrice')
         if price is None:
-            return QuoteResponse(success=False, error=f"No price data from Yahoo Finance for {symbol}")
+            return QuoteResponse(success=False, error=f"Failed to fetch quote: no price data available")
         
         return QuoteResponse(
             success=True,
@@ -462,6 +467,15 @@ async def get_history_yahoo(symbol: str, start_date: str, end_date: str) -> Hist
                 df = ticker.history(start=start_date, end=end_dt_inclusive.strftime("%Y-%m-%d"))
         
         if df.empty:
+            # Check if symbol is invalid or just no data for date range
+            ticker_info = ticker.info
+            if not ticker_info or 'symbol' not in ticker_info:
+                logger.warning(f"Invalid symbol or no data: {symbol}")
+                return HistoryResponse(
+                    success=False,
+                    error=f"Failed to fetch history: symbol not found or no data available"
+                )
+            # Valid symbol but no data for this date range
             return HistoryResponse(
                 success=True,
                 symbol=symbol,
@@ -536,7 +550,7 @@ async def get_fundamentals(symbol: str):
             ticker = yf.Ticker(yahoo_symbol)
             info = ticker.info
         
-        if not info:
+        if not info or 'symbol' not in info:
             return FundamentalsResponse(success=False, error=f"No data found for {symbol}")
         
         # Extract fundamentals

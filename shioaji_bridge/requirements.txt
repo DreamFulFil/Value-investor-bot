@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements.txt
 
 # Shioaji SDK for Sinopac broker integration (Taiwan stocks)
-shioaji>=1.1.4
+shioaji==1.2.9
 
 # Yahoo Finance as fallback data source
 yfinance>=0.2.0
@@ -18,3 +18,4 @@ pydantic>=2.5.0
 # Additional dependencies
 requests>=2.31.0
 pandas>=2.0.0
+jsonschema>=4.0.0
